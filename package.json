@@ -1,0 +1,16 @@
+{
+  "name": "renomada",
+  "version": "1.0.0",
+  "description": "ReNomada Flutter App",
+  "scripts": {
+    "dev": "flutter run -d chrome --web-port=8080",
+    "dev:hot": "flutter run -d chrome --web-port=8080 --hot",
+    "build": "flutter build web",
+    "clean": "flutter clean",
+    "get": "flutter pub get",
+    "doctor": "flutter doctor"
+  },
+  "keywords": ["flutter", "supabase", "renomada"],
+  "author": "Gian",
+  "license": "MIT"
+}

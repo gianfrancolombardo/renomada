@@ -1,0 +1,11 @@
+---
+name: flutter-best-practices.mdc
+description: Best practices for Flutter development and user experience
+globs: **/*.{dart}
+---
+
+- Use the Flutter widget tree effectively to build reusable components
+- Implement state management solutions like Provider or Riverpod for better state handling
+- Ensure a responsive design using MediaQuery and LayoutBuilder
+- Follow Material Design guidelines for a consistent user experience
+- Optimize performance by using const constructors and avoiding unnecessary rebuilds
