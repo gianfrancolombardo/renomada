@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ChatInput extends StatefulWidget {
   final TextEditingController controller;
@@ -43,12 +44,13 @@ class _ChatInputState extends State<ChatInput> {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: colorScheme.outline.withOpacity(0.2),
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+            width: 1,
           ),
         ),
       ),
@@ -56,44 +58,77 @@ class _ChatInputState extends State<ChatInput> {
         child: Row(
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TextField(
-                  controller: widget.controller,
-                  decoration: InputDecoration(
-                    hintText: 'Escribe un mensaje...',
-                    hintStyle: TextStyle(
-                      color: colorScheme.outline,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+              child: TextField(
+                controller: widget.controller,
+                decoration: InputDecoration(
+                  hintText: 'Escribe un mensaje...',
+                  hintStyle: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 16.sp,
+                  ),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: colorScheme.outlineVariant,
+                      width: 1,
                     ),
                   ),
-                  maxLines: null,
-                  textCapitalization: TextCapitalization.sentences,
-                  onSubmitted: _hasText ? (value) => _sendMessage() : null,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: colorScheme.outlineVariant,
+                      width: 1,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 16.h,
+                  ),
                 ),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: colorScheme.onSurface,
+                ),
+                maxLines: null,
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: _hasText ? (value) => _sendMessage() : null,
+                textInputAction: TextInputAction.send,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 12.w),
             Container(
+              width: 48.w,
+              height: 48.w,
               decoration: BoxDecoration(
                 color: _hasText && !widget.isLoading
                     ? colorScheme.primary
                     : colorScheme.outline.withOpacity(0.3),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: _hasText && !widget.isLoading
+                    ? [
+                        BoxShadow(
+                          color: colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: IconButton(
                 onPressed: _hasText && !widget.isLoading ? _sendMessage : null,
                 icon: widget.isLoading
                     ? SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 20.w,
+                        height: 20.w,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
@@ -102,7 +137,8 @@ class _ChatInputState extends State<ChatInput> {
                         ),
                       )
                     : Icon(
-                        Icons.send,
+                        Icons.send_rounded,
+                        size: 20.sp,
                         color: _hasText
                             ? colorScheme.onPrimary
                             : colorScheme.outline,

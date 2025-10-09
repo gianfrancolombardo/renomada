@@ -17,119 +17,131 @@ class ChatCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: colorScheme.primaryContainer,
-                backgroundImage: chat.otherUser.avatarUrl != null
-                    ? NetworkImage(chat.otherUser.avatarUrl!)
-                    : null,
-                child: chat.otherUser.avatarUrl == null
-                    ? Text(
-                        chat.otherUser.username?.substring(0, 1).toUpperCase() ?? '?',
-                        style: TextStyle(
-                          color: colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            chat.otherUser.username ?? 'Usuario',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Avatar - adjusted size to match content height
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: colorScheme.primaryContainer,
+                  backgroundImage: chat.otherUser.avatarUrl != null
+                      ? NetworkImage(chat.otherUser.avatarUrl!)
+                      : null,
+                  child: chat.otherUser.avatarUrl == null
+                      ? Text(
+                          chat.otherUser.username?.substring(0, 1).toUpperCase() ?? '?',
+                          style: TextStyle(
+                            color: colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
-                        ),
-                        if (chat.lastMessage != null)
-                          Text(
-                            _formatTime(chat.lastMessage!.createdAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.outline,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    // Item title
-                    Text(
-                      chat.item.title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.outline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    // Last message or status
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            chat.lastMessage?.content ?? _getStatusText(),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: chat.lastMessage != null
-                                  ? colorScheme.onSurface
-                                  : colorScheme.outline,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (chat.unreadCount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                // Content - reorganized hierarchy
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // First line: Username and timestamp
+                      Row(
+                        children: [
+                          Expanded(
                             child: Text(
-                              chat.unreadCount.toString(),
-                              style: TextStyle(
-                                color: colorScheme.onPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                              chat.otherUser.username ?? 'Usuario',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (chat.lastMessage != null)
+                            Text(
+                              _formatTime(chat.lastMessage!.createdAt),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 11,
                               ),
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Second line: Item title
+                      Text(
+                        chat.item.title,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      // Third line: Last message or status
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              chat.lastMessage?.content ?? _getStatusText(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: chat.lastMessage != null
+                                    ? colorScheme.onSurface
+                                    : colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                      ],
-                    ),
-                  ],
+                          if (chat.unreadCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                chat.unreadCount.toString(),
+                                style: TextStyle(
+                                  color: colorScheme.onPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

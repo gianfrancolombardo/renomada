@@ -25,20 +25,27 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) {
-    return Item(
-      id: json['id'] as String,
-      ownerId: json['owner_id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String?,
-      status: ItemStatus.values.firstWhere(
-        (v) => v.name == json['status'],
-        orElse: () => ItemStatus.available,
-      ),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at'] as String)
-          : null,
-    );
+    try {
+      return Item(
+        id: json['id'] as String,
+        ownerId: json['owner_id'] as String,
+        title: json['title'] as String,
+        description: json['description'] as String?,
+        status: ItemStatus.values.firstWhere(
+          (v) => v.name == (json['status'] ?? 'available'),
+          orElse: () => ItemStatus.available,
+        ),
+        createdAt: DateTime.parse(json['created_at'] as String),
+        updatedAt: json['updated_at'] != null 
+            ? DateTime.parse(json['updated_at'] as String)
+            : null,
+      );
+    } catch (e) {
+      print('❌ [Item.fromJson] Error: $e');
+      print('🔍 [Item.fromJson] JSON keys: ${json.keys}');
+      print('🔍 [Item.fromJson] Full JSON: $json');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {

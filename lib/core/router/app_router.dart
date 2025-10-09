@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/profile/screens/location_permission_screen.dart';
-import '../../features/profile/screens/profile_screen.dart';
 import '../../features/home/screens/home_screen.dart';
-import '../../features/items/screens/my_items_screen.dart';
-import '../../features/feed/screens/feed_screen.dart';
-import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
+import '../../shared/screens/main_screens.dart';
 import '../../core/config/supabase_config.dart';
 
 class AppRouter {
@@ -27,7 +25,7 @@ class AppRouter {
         
         // If user is authenticated and trying to access login/signup
         if (isAuthenticated && isLoggingIn) {
-          return '/feed';
+          return '/location-permission';
         }
         
         return null; // No redirect needed
@@ -59,32 +57,32 @@ class AppRouter {
           builder: (context, state) => const HomeScreen(),
         ),
         
-        // Profile route
+        // Main app routes with bottom navigation
         GoRoute(
           path: '/profile',
           name: 'profile',
-          builder: (context, state) => const ProfileScreen(),
+          builder: (context, state) => const ProfileMainScreen(),
         ),
         
         // My Items route
         GoRoute(
           path: '/my-items',
           name: 'my-items',
-          builder: (context, state) => const MyItemsScreen(),
+          builder: (context, state) => const MyItemsMainScreen(),
         ),
         
         // Feed route
         GoRoute(
           path: '/feed',
           name: 'feed',
-          builder: (context, state) => const FeedScreen(),
+          builder: (context, state) => const FeedMainScreen(),
         ),
         
         // Chat routes
         GoRoute(
           path: '/chats',
           name: 'chats',
-          builder: (context, state) => const ChatListScreen(),
+          builder: (context, state) => const ChatsMainScreen(),
         ),
         GoRoute(
           path: '/chat/:chatId',
@@ -95,7 +93,7 @@ class AppRouter {
           },
         ),
         
-        // Onboarding route (placeholder for now)
+        // Onboarding route
         GoRoute(
           path: '/onboarding',
           name: 'onboarding',
@@ -109,28 +107,3 @@ class AppRouter {
   static final GoRouter router = createRouter('/login');
 }
 
-// Placeholder screens
-class OnboardingScreen extends StatelessWidget {
-  const OnboardingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.explore, size: 64),
-            SizedBox(height: 16),
-            Text(
-              'Onboarding',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text('Pantalla de onboarding'),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -217,6 +217,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(error: null);
   }
 
+  // Refresh profile
+  Future<void> refreshProfile() async {
+    await _loadProfile();
+  }
+
   // Get user-friendly error message
   String _getErrorMessage(String error) {
     if (error.contains('Invalid login credentials')) {

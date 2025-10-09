@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/avatar_image.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../profile/providers/location_provider.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../auth/widgets/onboarding_dialog.dart';
+import '../../items/widgets/create_item_bottom_sheet.dart';
+import '../../../shared/services/profile_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -14,12 +20,15 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _profileService = ProfileService();
+
   @override
   void initState() {
     super.initState();
     // Update location when entering the app (if permission is granted)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateLocationIfPossible();
+      _checkOnboarding();
     });
   }
 
@@ -34,54 +43,269 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _checkOnboarding() async {
+    final profileState = ref.read(profileProvider);
+    
+    // Si no ha visto onboarding, mostrar dialog
+    if (profileState.profile != null && 
+        !profileState.profile!.hasSeenOnboarding) {
+      _showOnboardingDialog();
+    }
+  }
+
+  void _showOnboardingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // No cerrar tocando fuera
+      builder: (context) => OnboardingDialog(
+        onExplore: () async {
+          await _markOnboardingSeen();
+          if (mounted) {
+            Navigator.pop(context);
+            // Navegar al feed
+            context.push('/feed');
+          }
+        },
+        onPublish: () async {
+          await _markOnboardingSeen();
+          if (mounted) {
+            Navigator.pop(context);
+            // Mostrar bottom sheet de crear item
+            _showCreateItemSheet();
+          }
+        },
+        onSkip: () async {
+          await _markOnboardingSeen();
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _markOnboardingSeen() async {
+    try {
+      // await _profileService.markOnboardingAsSeen();
+      // Actualizar el estado en el provider
+      ref.read(profileProvider.notifier).loadProfile();
+    } catch (e) {
+      print('Error marking onboarding as seen: $e');
+    }
+  }
+
+  void _showCreateItemSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const CreateItemBottomSheet(),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ReNomada'),
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppHeader(
+        title: 'Inicio',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.location_on),
-            onPressed: () {
-              // Navigate to location permission screen
-              context.push('/location-permission');
+          // Profile dropdown
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'profile':
+                  context.push('/profile');
+                  break;
+                case 'my_items':
+                  context.push('/my-items');
+                  break;
+                case 'chats':
+                  context.push('/chats');
+                  break;
+                case 'logout':
+                  ref.read(authProvider.notifier).signOut();
+                  context.go('/login');
+                  break;
+              }
             },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.user,
+                      size: 18.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 12.w),
+                    Text(
+                      'Perfil',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'my_items',
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.package,
+                      size: 18.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 12.w),
+                    Text(
+                      'Mis artículos',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'chats',
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.messageCircle,
+                      size: 18.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 12.w),
+                    Text(
+                      'Mis chats',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.logOut,
+                      size: 18.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 12.w),
+                    Text(
+                      'Cerrar sesión',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            child: Container(
+              margin: EdgeInsets.only(right: 8.w),
+              child: CircleAvatar(
+                radius: 16.r,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: profileState.profile?.avatarUrl != null
+                    ? AvatarImage(
+                        avatarUrl: profileState.profile!.avatarUrl!,
+                        radius: 16.r,
+                      )
+                    : Icon(
+                        LucideIcons.user,
+                        size: 16.sp,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+              ),
+            ),
           ),
-          _buildProfileDropdown(context, profileState.profile),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          // Refresh is not needed in HomeScreen anymore
+          await _updateLocationIfPossible();
         },
         child: CustomScrollView(
           slivers: [
             // Welcome section
             SliverToBoxAdapter(
               child: Container(
-                padding: const EdgeInsets.all(16),
+                margin: EdgeInsets.all(20.w),
+                padding: EdgeInsets.all(24.w),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24.r),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                    width: 1,
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 48.w,
+                          height: 48.w,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.primaryContainer,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          child: Icon(
+                            Icons.waving_hand,
+                            size: 24.sp,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '¡Hola, ${profileState.profile?.username ?? 'Nómada'}!',
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.onBackground,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Bienvenido de vuelta',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
                     Text(
-                      '¡Hola, ${profileState.profile?.username ?? 'Nómada'}!',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                      'Comparte lo que ya no necesitas y encuentra tesoros cerca de ti. ¡Forma parte de una comunidad sostenible!',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Comparte lo que ya no necesitas y encuentra tesoros cerca de ti',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -90,69 +314,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Quick actions section
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Acciones Rápidas',
-                      style: const TextStyle(
-                        fontSize: 20,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onBackground,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickActionCard(
-                            context,
-                            'Mis Artículos',
-                            Icons.inventory_2_outlined,
-                            () => context.push('/my-items'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickActionCard(
-                            context,
-                            'Explorar',
-                            Icons.explore_outlined,
-                            () => context.push('/feed'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickActionCard(
-                            context,
-                            'Conversaciones',
-                            Icons.chat_bubble_outline,
-                            () => context.push('/chats'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickActionCard(
-                            context,
-                            'Mi Perfil',
-                            Icons.person_outline,
-                            () => context.push('/profile'),
-                          ),
-                        ),
-                      ],
-                    ),
+                    SizedBox(height: 20.h),
+                    _buildQuickActionsGrid(context),
                   ],
                 ),
               ),
             ),
             
             // Bottom spacing
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
+            SliverToBoxAdapter(
+              child: SizedBox(height: 100.h),
             ),
           ],
         ),
@@ -160,115 +342,129 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildProfileDropdown(BuildContext context, profile) {
-    return PopupMenuButton<String>(
-      icon: AvatarImage(
-        avatarUrl: profile?.avatarUrl,
-        radius: 16,
-        backgroundColor: Colors.grey.shade300,
-        placeholder: const Icon(Icons.person, size: 20),
-      ),
-      onSelected: (value) {
-        switch (value) {
-          case 'profile':
-            context.push('/profile');
-            break;
-          case 'items':
-            context.push('/my-items');
-            break;
-          case 'chats':
-            context.push('/chats');
-            break;
-          case 'logout':
-            _handleLogout(context);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'profile',
-          child: Row(
-            children: [
-              Icon(Icons.person_outline),
-              SizedBox(width: 8),
-              Text('Mi Perfil'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'items',
-          child: Row(
-            children: [
-              Icon(Icons.inventory_2_outlined),
-              SizedBox(width: 8),
-              Text('Mis Artículos'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'chats',
-          child: Row(
-            children: [
-              Icon(Icons.chat_bubble_outline),
-              SizedBox(width: 8),
-              Text('Conversaciones'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout),
-              SizedBox(width: 8),
-              Text('Cerrar Sesión'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    await ref.read(authProvider.notifier).signOut();
-    if (context.mounted) {
-      context.go('/login');
-    }
+  Widget _buildQuickActionsGrid(BuildContext context) {
+    final actions = [
+      {
+        'title': 'Mis Artículos',
+        'icon': Icons.inventory_2_outlined,
+        'onTap': () => context.push('/my-items'),
+        'color': Theme.of(context).colorScheme.primary,
+      },
+      {
+        'title': 'Explorar',
+        'icon': Icons.explore_outlined,
+        'onTap': () => context.push('/feed'),
+        'color': Theme.of(context).colorScheme.secondary,
+      },
+      {
+        'title': 'Conversaciones',
+        'icon': Icons.chat_bubble_outline,
+        'onTap': () => context.push('/chats'),
+        'color': Theme.of(context).colorScheme.tertiary,
+      },
+      {
+        'title': 'Mi Perfil',
+        'icon': Icons.person_outline,
+        'onTap': () => context.push('/profile'),
+        'color': Theme.of(context).colorScheme.primary,
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16.w,
+        mainAxisSpacing: 16.h,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: actions.length,
+      itemBuilder: (context, index) {
+        final action = actions[index];
+        return _buildQuickActionCard(
+          context,
+          action['title'] as String,
+          action['icon'] as IconData,
+          action['color'] as Color,
+          action['onTap'] as VoidCallback,
+        );
+      },
+    );
   }
 
   Widget _buildQuickActionCard(
     BuildContext context,
     String title,
     IconData icon,
+    Color color,
     VoidCallback onTap,
   ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: Colors.green.shade600,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20.r),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 56.w,
+                  height: 56.w,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        color,
+                        color.withOpacity(0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 28.sp,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+                SizedBox(height: 12.h),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),

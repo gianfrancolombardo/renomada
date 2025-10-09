@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import '../../../shared/widgets/feed_item_card.dart';
+import '../../../shared/widgets/radius_selector.dart';
 import '../providers/feed_provider.dart';
-import '../widgets/feed_card.dart';
-import '../widgets/radius_selector.dart';
+import '../../../shared/services/feed_service.dart';
 import '../widgets/feed_empty_state.dart';
 import '../widgets/feed_loading_state.dart';
 import '../widgets/feed_error_state.dart';
 import '../../profile/providers/location_provider.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../../shared/widgets/avatar_image.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
-  const FeedScreen({super.key});
+  final bool isRadiusSelectorVisible;
+  final VoidCallback onToggleRadiusSelector;
+
+  const FeedScreen({
+    super.key,
+    this.isRadiusSelectorVisible = false,
+    required this.onToggleRadiusSelector,
+  });
 
   @override
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
@@ -22,6 +30,7 @@ class FeedScreen extends ConsumerStatefulWidget {
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+  bool _isNavigatingToChat = false;
 
   @override
   void initState() {
@@ -104,11 +113,46 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     _moveToNextCard();
   }
 
-  void _onSwipeRight(String itemId) {
+  void _onSwipeRight(String itemId) async {
     // Like - remove from feed and record interaction
     ref.read(feedProvider.notifier).removeItem(itemId);
-    _recordInteraction(itemId, 'like');
-    _moveToNextCard();
+    
+    // Show loading overlay
+    setState(() {
+      _isNavigatingToChat = true;
+    });
+    
+    try {
+      // Record interaction and get chatId
+      final feedService = FeedService();
+      final chatId = await feedService.recordInteraction(
+        itemId: itemId,
+        action: 'like',
+      );
+      
+      // Navigate to chat after a short delay to allow the loading animation to complete
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            _isNavigatingToChat = false;
+          });
+          
+          if (chatId != null) {
+            context.go('/chat/$chatId');
+          } else {
+            // Fallback if no chatId returned
+            print('Warning: No chatId returned for like action');
+          }
+        }
+      });
+    } catch (e) {
+      print('Error recording like interaction: $e');
+      if (mounted) {
+        setState(() {
+          _isNavigatingToChat = false;
+        });
+      }
+    }
   }
 
   void _recordInteraction(String itemId, String action) {
@@ -146,6 +190,75 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     }
   }
 
+
+
+
+  Widget _buildActionButtons(FeedState feedState) {
+    if (feedState.items.isEmpty) return const SizedBox.shrink();
+    
+    // Ensure _currentIndex is within bounds
+    final safeIndex = _currentIndex.clamp(0, feedState.items.length - 1);
+    final currentItem = feedState.items[safeIndex];
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 20.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          // Pass button
+          GestureDetector(
+            onTap: () => _onSwipeLeft(currentItem.item.id),
+            child: Container(
+              width: 64.w,
+              height: 64.w,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Icon(
+                LucideIcons.x,
+                color: Colors.white,
+                size: 32.sp,
+              ),
+            ),
+          ),
+          
+          // Like button
+          GestureDetector(
+            onTap: () => _onSwipeRight(currentItem.item.id),
+            child: Container(
+              width: 64.w,
+              height: 64.w,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Icon(
+                LucideIcons.heart,
+                color: Colors.white,
+                size: 32.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final feedState = ref.watch(feedProvider);
@@ -167,35 +280,88 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ReNomada'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.location_on),
-            onPressed: () {
-              // Navigate to location permission screen
-              context.push('/location-permission');
-            },
-          ),
-          _buildProfileDropdown(context, profileState.profile),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Radius selector
-          if (locationState.isPermissionGranted && locationState.hasLocation)
-            RadiusSelector(
-              selectedRadius: feedState.selectedRadiusKm,
-              onRadiusChanged: _onRadiusChanged,
+    return Stack(
+      children: [
+        _buildBody(feedState, locationState, profileState),
+        
+        // Loading overlay for chat navigation
+        if (_isNavigatingToChat)
+          Container(
+            color: Colors.green.withOpacity(0.8),
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.all(24.w),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(20.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 60.w,
+                      height: 60.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.green,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20.h),
+                    Text(
+                      '¡Perfecto!',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 24.sp,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Abriendo chat...',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.green.shade700,
+                        fontSize: 16.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          
-          // Main content
-          Expanded(
-            child: _buildContent(feedState, locationState),
           ),
-        ],
-      ),
+      ],
+    );
+  }
+
+  Widget _buildBody(feedState, locationState, profileState) {
+    return Column(
+      children: [
+        // Radius selector - now toggleable
+        if (locationState.isPermissionGranted && locationState.hasLocation)
+          RadiusSelector(
+            selectedRadius: feedState.selectedRadiusKm.toInt(),
+            onRadiusChanged: (radius) => _onRadiusChanged(radius.toDouble()),
+            isVisible: widget.isRadiusSelectorVisible,
+          ),
+        
+        // Main content
+        Expanded(
+          child: _buildContent(feedState, locationState),
+        ),
+        
+        // Action buttons below the content
+        if (locationState.isPermissionGranted && locationState.hasLocation && 
+            feedState.items.isNotEmpty)
+          _buildActionButtons(feedState),
+      ],
     );
   }
 
@@ -252,6 +418,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       onRefresh: _onRefresh,
       child: PageView.builder(
         controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(), // Disable PageView scrolling
         onPageChanged: (index) {
           setState(() {
             _currentIndex = index;
@@ -270,8 +437,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
           final feedItem = feedState.items[index];
           
-          return FeedCard(
-            feedItem: feedItem,
+          return FeedItemCard(
+            item: feedItem,
+            onTap: () {
+              // TODO: Navigate to item details
+            },
             onSwipeLeft: () => _onSwipeLeft(feedItem.item.id),
             onSwipeRight: () => _onSwipeRight(feedItem.item.id),
           );
@@ -283,38 +453,88 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget _buildLocationPermissionRequired() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.location_off,
-              size: 64,
-              color: Colors.grey.shade400,
+        padding: EdgeInsets.all(24.w),
+        child: Container(
+          padding: EdgeInsets.all(32.w),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(24.r),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              width: 1,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Permisos de Ubicación Requeridos',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Para mostrarte artículos cerca de ti, necesitamos acceso a tu ubicación.',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                await ref.read(locationProvider.notifier).requestLocationPermission();
-                if (ref.read(locationProvider).isPermissionGranted) {
-                  await _loadFeedIfPossible();
-                }
-              },
-              child: const Text('Conceder Permisos'),
-            ),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80.w,
+                height: 80.w,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Icon(
+                  Icons.location_off_outlined,
+                  size: 40.sp,
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
+              SizedBox(height: 24.h),
+              Text(
+                'Permisos de Ubicación Requeridos',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onBackground,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12.h),
+              Text(
+                'Para mostrarte artículos cerca de ti, necesitamos acceso a tu ubicación.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 32.h),
+              SizedBox(
+                width: double.infinity,
+                height: 56.h,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await ref.read(locationProvider.notifier).requestLocationPermission();
+                    if (ref.read(locationProvider).isPermissionGranted) {
+                      await _loadFeedIfPossible();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Conceder Permisos',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -323,108 +543,75 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget _buildLocationRequired() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.my_location,
-              size: 64,
-              color: Colors.grey.shade400,
+        padding: EdgeInsets.all(24.w),
+        child: Container(
+          padding: EdgeInsets.all(32.w),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(24.r),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              width: 1,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Obteniendo Ubicación',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Estamos obteniendo tu ubicación actual para mostrarte artículos cercanos.',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80.w,
+                height: 80.w,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primaryContainer,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Icon(
+                  Icons.my_location_outlined,
+                  size: 40.sp,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+              SizedBox(height: 24.h),
+              Text(
+                'Obteniendo Ubicación',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onBackground,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12.h),
+              Text(
+                'Estamos obteniendo tu ubicación actual para mostrarte artículos cercanos.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 32.h),
+              CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileDropdown(BuildContext context, profile) {
-    return PopupMenuButton<String>(
-      icon: AvatarImage(
-        avatarUrl: profile?.avatarUrl,
-        radius: 16,
-        backgroundColor: Colors.grey.shade300,
-        placeholder: const Icon(Icons.person, size: 20),
-      ),
-      onSelected: (value) {
-        switch (value) {
-          case 'profile':
-            context.push('/profile');
-            break;
-          case 'items':
-            context.push('/my-items');
-            break;
-          case 'chats':
-            context.push('/chats');
-            break;
-          case 'logout':
-            _handleLogout(context);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'profile',
-          child: Row(
-            children: [
-              Icon(Icons.person_outline),
-              SizedBox(width: 8),
-              Text('Mi Perfil'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'items',
-          child: Row(
-            children: [
-              Icon(Icons.inventory_2_outlined),
-              SizedBox(width: 8),
-              Text('Mis Artículos'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'chats',
-          child: Row(
-            children: [
-              Icon(Icons.chat_bubble_outline),
-              SizedBox(width: 8),
-              Text('Conversaciones'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout),
-              SizedBox(width: 8),
-              Text('Cerrar Sesión'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    await ref.read(authProvider.notifier).signOut();
-    if (context.mounted) {
-      context.go('/login');
-    }
-  }
 }

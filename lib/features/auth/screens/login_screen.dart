@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../providers/auth_provider.dart';
@@ -54,31 +55,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(24.w),
+          padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: 40.h),
+              SizedBox(height: 60.h),
               
               // Logo and title
               _buildHeader(),
               
-              SizedBox(height: 48.h),
+              SizedBox(height: 56.h),
               
               // Login form
               _buildLoginForm(),
               
-              SizedBox(height: 24.h),
+              SizedBox(height: 32.h),
               
               // Sign up link
               _buildSignUpLink(),
               
-              SizedBox(height: 32.h),
+              SizedBox(height: 40.h),
               
               // Forgot password
               _buildForgotPassword(),
+              
+              SizedBox(height: 40.h),
             ],
           ),
         ),
@@ -89,40 +93,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        // App logo
+        // App logo with solid background
         Container(
-          width: 80.w,
-          height: 80.w,
+          width: 72.w,
+          height: 72.w,
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20.r),
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Icon(
-            Icons.explore_outlined,
-            size: 40.sp,
-            color: AppTheme.primaryColor,
+            LucideIcons.compass,
+            size: 32.sp,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
         
-        SizedBox(height: 24.h),
+        SizedBox(height: 32.h),
         
         // Title
         Text(
           '¡Bienvenido de vuelta!',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onBackground,
           ),
           textAlign: TextAlign.center,
         ),
         
-        SizedBox(height: 8.h),
+        SizedBox(height: 12.h),
         
         // Subtitle
         Text(
-          'Inicia sesión para continuar',
+          'Inicia sesión para continuar tu aventura nómada',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: AppTheme.textSecondaryColor,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            height: 1.4,
           ),
           textAlign: TextAlign.center,
         ),
@@ -131,121 +143,180 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildLoginForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        children: [
-          // Email field
-          AuthFormField(
-            controller: _emailController,
-            label: 'Email',
-            hint: 'tu@email.com',
-            keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.email_outlined,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Ingresa tu email';
-              }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                return 'Email inválido';
-              }
-              return null;
-            },
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          
-          SizedBox(height: 16.h),
-          
-          // Password field
-          AuthFormField(
-            controller: _passwordController,
-            label: 'Contraseña',
-            hint: 'Tu contraseña',
-            obscureText: _obscurePassword,
-            prefixIcon: Icons.lock_outlined,
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Iniciar Sesión',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
+            ),
+            
+            SizedBox(height: 24.h),
+            
+            // Email field
+            AuthFormField(
+              controller: _emailController,
+              label: '',
+              hint: 'tu@email.com',
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: LucideIcons.mail,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Ingresa tu email';
+                }
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  return 'Email inválido';
+                }
+                return null;
               },
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Ingresa tu contraseña';
-              }
-              if (value.length < 6) {
-                return 'La contraseña debe tener al menos 6 caracteres';
-              }
-              return null;
-            },
-          ),
-          
-          SizedBox(height: 32.h),
-          
-          // Login button
-          Consumer(
-            builder: (context, ref, child) {
-              final isLoading = ref.watch(authLoadingProvider);
-              return SizedBox(
-                width: double.infinity,
-                height: 48.h,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _handleLogin,
-                  child: isLoading
-                      ? const LoadingWidget(size: 20)
-                      : Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+            
+            SizedBox(height: 16.h),
+            
+            // Password field
+            AuthFormField(
+              controller: _passwordController,
+              label: '',
+              hint: 'Tu contraseña',
+              obscureText: _obscurePassword,
+              prefixIcon: LucideIcons.lock,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              );
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Ingresa tu contraseña';
+                }
+                if (value.length < 6) {
+                  return 'La contraseña debe tener al menos 6 caracteres';
+                }
+                return null;
+              },
+            ),
+            
+            SizedBox(height: 32.h),
+            
+            // Login button
+            Consumer(
+              builder: (context, ref, child) {
+                final isLoading = ref.watch(authLoadingProvider);
+                return SizedBox(
+                  width: double.infinity,
+                  height: 56.h,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      elevation: 0,
+                      shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const LoadingWidget(size: 24)
+                        : Text(
+                            'Iniciar Sesión',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignUpLink() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '¿No tienes cuenta? ',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              context.push('/signup');
             },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              'Regístrate aquí',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16.sp,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSignUpLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          '¿No tienes cuenta? ',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppTheme.textSecondaryColor,
-          ),
-        ),
-        TextButton(
-          onPressed: () {
-            context.push('/signup');
-          },
-          child: Text(
-            'Regístrate',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildForgotPassword() {
-    return TextButton(
-      onPressed: _handleForgotPassword,
-      child: Text(
-        '¿Olvidaste tu contraseña?',
-        style: TextStyle(
-          color: AppTheme.primaryColor,
-          fontSize: 14.sp,
+    return Center(
+      child: TextButton(
+        onPressed: _handleForgotPassword,
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+        ),
+        child: Text(
+          '¿Olvidaste tu contraseña?',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

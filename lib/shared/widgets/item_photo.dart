@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../services/item_service.dart';
 
 final _itemPhotoProvider = FutureProvider.family<String?, String>((ref, itemId) async {
@@ -49,7 +50,7 @@ class ItemPhoto extends ConsumerWidget {
                 errorWidget: (context, url, error) => errorWidget ?? Container(
                   color: Colors.grey.shade200,
                   child: const Icon(
-                    Icons.inventory_2_outlined,
+                    LucideIcons.package,
                     size: 32,
                     color: Colors.grey,
                   ),
@@ -59,8 +60,8 @@ class ItemPhoto extends ConsumerWidget {
           } else {
             return Container(
               color: Colors.grey.shade200,
-              child: placeholder ?? const Icon(
-                Icons.inventory_2_outlined,
+              child:               placeholder ?? const Icon(
+                LucideIcons.package,
                 size: 32,
                 color: Colors.grey,
               ),
@@ -76,7 +77,7 @@ class ItemPhoto extends ConsumerWidget {
         error: (error, stack) => Container(
           color: Colors.grey.shade200,
           child: errorWidget ?? const Icon(
-            Icons.error_outline,
+            LucideIcons.alertCircle,
             size: 32,
             color: Colors.grey,
           ),

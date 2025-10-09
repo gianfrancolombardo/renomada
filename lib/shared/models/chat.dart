@@ -22,17 +22,24 @@ class Chat {
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
-    return Chat(
-      id: json['id'] as String,
-      itemId: json['item_id'] as String,
-      aUserId: json['a_user_id'] as String,
-      bUserId: json['b_user_id'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      status: ChatStatus.values.firstWhere(
-        (v) => v.name == json['status'],
-        orElse: () => ChatStatus.coordinating,
-      ),
-    );
+    try {
+      return Chat(
+        id: json['id'] as String,
+        itemId: json['item_id'] as String,
+        aUserId: json['a_user_id'] as String,
+        bUserId: json['b_user_id'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+        status: ChatStatus.values.firstWhere(
+          (v) => v.name == (json['status'] ?? 'coordinating'),
+          orElse: () => ChatStatus.coordinating,
+        ),
+      );
+    } catch (e) {
+      print('❌ [Chat.fromJson] Error: $e');
+      print('🔍 [Chat.fromJson] JSON keys: ${json.keys}');
+      print('🔍 [Chat.fromJson] Full JSON: $json');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {

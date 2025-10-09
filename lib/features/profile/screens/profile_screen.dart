@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/avatar_image.dart';
+import '../../../shared/services/auth_service.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -40,39 +42,69 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      final authService = AuthService();
+      await authService.signOut();
+      
+      if (mounted) {
+        context.go('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cerrar sesión: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileProvider);
     final isLoading = ref.watch(profileLoadingProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi Perfil'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(24.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 20.h),
-              
-              // Avatar section
-              _buildAvatarSection(profileState),
-              
-              SizedBox(height: 32.h),
-              
-              // Username form
-              _buildUsernameForm(),
-              
-              SizedBox(height: 32.h),
-              
-              // Save button
-              _buildSaveButton(isLoading),
-            ],
-          ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(height: 32.h),
+            
+            // Avatar section - simplified
+            _buildAvatarSection(profileState),
+            
+            SizedBox(height: 48.h),
+            
+            // Username form - simplified
+            _buildUsernameForm(),
+            
+            SizedBox(height: 48.h),
+            
+            // Save button
+            _buildSaveButton(isLoading),
+            
+            SizedBox(height: 48.h),
+            
+            // Logout text - centered at bottom
+            TextButton(
+              onPressed: _handleLogout,
+              child: Text(
+                'Cerrar sesión',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            
+            SizedBox(height: 32.h),
+          ],
         ),
       ),
     );
@@ -81,39 +113,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildAvatarSection(profileState) {
     return Column(
       children: [
-        // Avatar
+        // Avatar - clean and minimal
         GestureDetector(
           onTap: _showAvatarOptions,
           child: Stack(
             children: [
               AvatarImage(
                 avatarUrl: profileState.profile?.avatarUrl,
-                radius: 60.r,
-                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                radius: 80.r,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
                 placeholder: Icon(
-                  Icons.person,
-                  size: 60.sp,
-                  color: AppTheme.primaryColor,
+                  LucideIcons.user,
+                  size: 80.sp,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  width: 36.w,
-                  height: 36.w,
+                  width: 32.w,
+                  height: 32.w,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       width: 2,
                     ),
                   ),
                   child: Icon(
-                    Icons.camera_alt,
-                    size: 20.sp,
-                    color: Colors.white,
+                    LucideIcons.camera,
+                    size: 16.sp,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
               ),
@@ -121,13 +153,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         
-        SizedBox(height: 12.h),
+        SizedBox(height: 16.h),
         
-        // Avatar label
+        // Simple avatar label
         Text(
           'Toca para cambiar foto',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppTheme.textSecondaryColor,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w400,
           ),
         ),
       ],
@@ -140,37 +173,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Simple section title
+          Text(
+            'Información del Perfil',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          
+          SizedBox(height: 32.h),
+          
+          // Username field label
           Text(
             'Nombre de usuario',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           
           SizedBox(height: 8.h),
           
+          // Simplified username field
           TextFormField(
             controller: _usernameController,
             decoration: InputDecoration(
               hintText: 'Ingresa tu nombre de usuario',
-              prefixIcon: const Icon(Icons.person_outlined),
+              prefixIcon: Icon(
+                LucideIcons.user,
+                size: 20.sp,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              filled: true,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(
-                  color: AppTheme.borderColor,
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide(
-                  color: AppTheme.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   width: 2,
                 ),
               ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.error,
+                  width: 2,
+                ),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+            ),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -186,13 +254,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
           ),
           
-          SizedBox(height: 8.h),
+          SizedBox(height: 12.h),
           
-          Text(
-            'Este nombre será visible para otros usuarios',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
+          // Simple info message
+          Row(
+            children: [
+              Icon(
+                LucideIcons.info,
+                size: 16.sp,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  'Este nombre será visible para otros usuarios',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -202,17 +284,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildSaveButton(bool isLoading) {
     return SizedBox(
       width: double.infinity,
-      height: 48.h,
+      height: 56.h,
       child: ElevatedButton(
         onPressed: isLoading ? null : _handleSave,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          elevation: 2,
+          shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+        ),
         child: isLoading
-            ? const LoadingWidget(size: 20)
-            : Text(
-                'Guardar Cambios',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+            ? LoadingWidget(
+                size: 20,
+                color: Theme.of(context).colorScheme.onPrimary,
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    LucideIcons.check,
+                    size: 18.sp,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'Guardar Cambios',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -221,53 +326,74 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showAvatarOptions() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40.w,
-              height: 4.h,
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              decoration: BoxDecoration(
-                color: AppTheme.borderColor,
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            
-            Text(
-              'Cambiar foto de perfil',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            
-            SizedBox(height: 20.h),
-            
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAvatarOption(
-                  icon: Icons.camera_alt,
-                  label: 'Cámara',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.camera);
-                  },
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24.r),
+            topRight: Radius.circular(24.r),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40.w,
+                height: 4.h,
+                margin: EdgeInsets.symmetric(vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
-                _buildAvatarOption(
-                  icon: Icons.photo_library,
-                  label: 'Galería',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.gallery);
-                  },
+              ),
+              
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Text(
+                  'Cambiar foto de perfil',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-              ],
-            ),
+              ),
             
-            SizedBox(height: 20.h),
-          ],
+              SizedBox(height: 24.h),
+              
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildAvatarOption(
+                        icon: Icons.camera_alt,
+                        label: 'Cámara',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _pickImage(ImageSource.camera);
+                        },
+                      ),
+                    ),
+                    SizedBox(width: 16.w),
+                    Expanded(
+                      child: _buildAvatarOption(
+                        icon: Icons.photo_library,
+                        label: 'Galería',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _pickImage(ImageSource.gallery);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 24.h),
+            ],
+          ),
         ),
       ),
     );
@@ -278,31 +404,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60.w,
-            height: 60.w,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 30.sp,
-              color: AppTheme.primaryColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              width: 1,
             ),
           ),
-          
-          SizedBox(height: 8.h),
-          
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium,
+          child: Column(
+            children: [
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primaryContainer,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  size: 28.sp,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+              
+              SizedBox(height: 12.h),
+              
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

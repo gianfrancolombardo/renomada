@@ -174,9 +174,12 @@ class ChatService {
   // Get chat with full details
   Future<ChatWithDetails?> getChatWithDetails(String chatId) async {
     try {
+      print('🔍 [ChatService] Loading chat details for chatId: $chatId');
       final currentUserId = SupabaseConfig.currentUser!.id;
+      print('👤 [ChatService] Current user ID: $currentUserId');
       
       // Get chat with item details
+      print('📡 [ChatService] Fetching chat data...');
       final chatResponse = await SupabaseConfig.client
           .from('chats')
           .select('''
@@ -188,6 +191,7 @@ class ChatService {
             status,
             items!inner(
               id,
+              owner_id,
               title,
               description,
               status,
@@ -198,13 +202,40 @@ class ChatService {
           .eq('id', chatId)
           .maybeSingle();
 
-      if (chatResponse == null) return null;
+      if (chatResponse == null) {
+        print('❌ [ChatService] Chat not found for chatId: $chatId');
+        
+        // Check if chat exists in database (to detect RLS issues)
+        try {
+          final rlsCheck = await SupabaseConfig.client.rpc(
+            'check_chat_exists',
+            params: {'p_chat_id': chatId}
+          );
+          
+          if (rlsCheck == true) {
+            print('⚠️ [ChatService] POSIBLE PROBLEMA DE RLS: El chat existe en la BD pero no es accesible');
+            print('⚠️ [ChatService] Chat ID: $chatId, User ID: $currentUserId');
+          } else {
+            print('ℹ️ [ChatService] El chat no existe en la base de datos');
+          }
+        } catch (rpcError) {
+          print('⚠️ [ChatService] No se pudo verificar RLS (función RPC no existe o error): $rpcError');
+          print('ℹ️ [ChatService] Considera crear la función check_chat_exists en Supabase');
+        }
+        
+        return null;
+      }
 
+      print('✅ [ChatService] Chat data received: ${chatResponse['id']}');
+      
       final chat = Chat.fromJson(chatResponse);
       final item = Item.fromJson(chatResponse['items']);
+      print('📦 [ChatService] Item: ${item.title}');
       
       // Get other user profile
       final otherUserId = chat.getOtherUserId(currentUserId);
+      print('👤 [ChatService] Getting profile for other user: $otherUserId');
+      
       final profileResponse = await SupabaseConfig.client
           .from('profiles')
           .select('user_id, username, avatar_url')
@@ -214,21 +245,38 @@ class ChatService {
       final otherUser = profileResponse != null 
           ? UserProfile.fromJson(profileResponse)
           : UserProfile(userId: otherUserId);
+      
+      print('👤 [ChatService] Other user: ${otherUser.username ?? 'No username'}');
 
       // Get last message
+      print('💬 [ChatService] Fetching last message...');
       final lastMessageResponse = await SupabaseConfig.client
           .from('messages')
-          .select('id, content, created_at, sender_id')
+          .select('id, content, created_at, sender_id, chat_id, status')
           .eq('chat_id', chat.id)
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();
 
-      final lastMessage = lastMessageResponse != null
-          ? Message.fromJson(lastMessageResponse)
-          : null;
+      print('💬 [ChatService] Last message response: $lastMessageResponse');
+      
+      Message? lastMessage;
+      if (lastMessageResponse != null) {
+        try {
+          lastMessage = Message.fromJson(lastMessageResponse);
+          print('✅ [ChatService] Last message parsed successfully');
+        } catch (e) {
+          print('❌ [ChatService] Error parsing last message: $e');
+          print('🔍 [ChatService] Message data keys: ${lastMessageResponse.keys}');
+          print('🔍 [ChatService] Message data values: ${lastMessageResponse.values}');
+          lastMessage = null;
+        }
+      } else {
+        print('ℹ️ [ChatService] No messages found in chat');
+      }
 
       // Get unread count
+      print('📊 [ChatService] Counting unread messages...');
       final unreadResponse = await SupabaseConfig.client
           .from('messages')
           .select('id')
@@ -237,14 +285,19 @@ class ChatService {
           .eq('status', 'sent');
 
       final unreadCount = unreadResponse.length;
+      print('📊 [ChatService] Unread count: $unreadCount');
 
-      return ChatWithDetails(
+      print('✅ [ChatService] Creating ChatWithDetails object...');
+      final chatWithDetails = ChatWithDetails(
         chat: chat,
         item: item,
         otherUser: otherUser,
         lastMessage: lastMessage,
         unreadCount: unreadCount,
       );
+      
+      print('✅ [ChatService] ChatWithDetails created successfully');
+      return chatWithDetails;
     } catch (e) {
       throw Exception('Failed to get chat details: $e');
     }

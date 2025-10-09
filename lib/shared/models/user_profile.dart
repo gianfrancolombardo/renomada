@@ -5,6 +5,7 @@ class UserProfile {
   final Map<String, dynamic>? lastLocation; // PostGIS point as JSON
   final DateTime? lastSeenAt;
   final bool isLocationOptOut;
+  final bool hasSeenOnboarding;
 
   const UserProfile({
     required this.userId,
@@ -13,6 +14,7 @@ class UserProfile {
     this.lastLocation,
     this.lastSeenAt,
     this.isLocationOptOut = false,
+    this.hasSeenOnboarding = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class UserProfile {
           ? DateTime.parse(json['last_seen_at'] as String)
           : null,
       isLocationOptOut: json['is_location_opt_out'] as bool? ?? false,
+      hasSeenOnboarding: json['has_seen_onboarding'] as bool? ?? false,
     );
   }
 
@@ -38,6 +41,7 @@ class UserProfile {
       'last_location': lastLocation,
       'last_seen_at': lastSeenAt?.toIso8601String(),
       'is_location_opt_out': isLocationOptOut,
+      'has_seen_onboarding': hasSeenOnboarding,
     };
   }
 
@@ -48,6 +52,7 @@ class UserProfile {
     Map<String, dynamic>? lastLocation,
     DateTime? lastSeenAt,
     bool? isLocationOptOut,
+    bool? hasSeenOnboarding,
   }) {
     return UserProfile(
       userId: userId ?? this.userId,
@@ -56,6 +61,7 @@ class UserProfile {
       lastLocation: lastLocation ?? this.lastLocation,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       isLocationOptOut: isLocationOptOut ?? this.isLocationOptOut,
+      hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
     );
   }
 
@@ -68,7 +74,8 @@ class UserProfile {
         other.avatarUrl == avatarUrl &&
         other.lastLocation == lastLocation &&
         other.lastSeenAt == lastSeenAt &&
-        other.isLocationOptOut == isLocationOptOut;
+        other.isLocationOptOut == isLocationOptOut &&
+        other.hasSeenOnboarding == hasSeenOnboarding;
   }
 
   @override
@@ -80,11 +87,12 @@ class UserProfile {
       lastLocation,
       lastSeenAt,
       isLocationOptOut,
+      hasSeenOnboarding,
     );
   }
 
   @override
   String toString() {
-    return 'UserProfile(userId: $userId, username: $username, avatarUrl: $avatarUrl, lastLocation: $lastLocation, lastSeenAt: $lastSeenAt, isLocationOptOut: $isLocationOptOut)';
+    return 'UserProfile(userId: $userId, username: $username, avatarUrl: $avatarUrl, lastLocation: $lastLocation, lastSeenAt: $lastSeenAt, isLocationOptOut: $isLocationOptOut, hasSeenOnboarding: $hasSeenOnboarding)';
   }
 }

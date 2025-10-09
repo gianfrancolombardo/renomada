@@ -33,11 +33,22 @@ create index if not exists profiles_last_location_gix
 
 alter table public.profiles enable row level security;
 
--- Only the owner can read/update their own profile
+-- Users can view their own profile and profiles of people they chat with
 drop policy if exists profiles_self_select on public.profiles;
-create policy profiles_self_select
+drop policy if exists profiles_chat_participants_select on public.profiles;
+create policy profiles_chat_participants_select
   on public.profiles for select
-  using (auth.uid() = user_id);
+  using (
+    -- Own profile
+    auth.uid() = user_id
+    or
+    -- Profile of someone you have a chat with
+    exists (
+      select 1 from public.chats c
+      where (c.a_user_id = auth.uid() and c.b_user_id = profiles.user_id)
+         or (c.b_user_id = auth.uid() and c.a_user_id = profiles.user_id)
+    )
+  );
 
 drop policy if exists profiles_self_update on public.profiles;
 create policy profiles_self_update
@@ -68,9 +79,26 @@ create index if not exists items_created_idx on public.items(created_at);
 
 alter table public.items enable row level security;
 
--- Owner can do everything on their items
+-- Chat participants can view items that are part of their chats
 drop policy if exists items_owner_all on public.items;
-create policy items_owner_all
+drop policy if exists items_chat_participants_select on public.items;
+create policy items_chat_participants_select
+  on public.items for select
+  using (
+    -- Owner can see their own items
+    auth.uid() = owner_id
+    or
+    -- Chat participants can see items that are part of their chats
+    exists (
+      select 1 from public.chats c
+      where c.item_id = items.id
+        and (auth.uid() = c.a_user_id or auth.uid() = c.b_user_id)
+    )
+  );
+
+-- Owner can insert, update, delete their items
+drop policy if exists items_owner_insert_update_delete on public.items;
+create policy items_owner_insert_update_delete
   on public.items for all
   using (auth.uid() = owner_id)
   with check (auth.uid() = owner_id);
@@ -146,6 +174,12 @@ create policy chats_participants_select
 drop policy if exists chats_participants_insert on public.chats;
 create policy chats_participants_insert
   on public.chats for insert
+  with check (auth.uid() = a_user_id or auth.uid() = b_user_id);
+
+drop policy if exists chats_participants_update on public.chats;
+create policy chats_participants_update
+  on public.chats for update
+  using (auth.uid() = a_user_id or auth.uid() = b_user_id)
   with check (auth.uid() = a_user_id or auth.uid() = b_user_id);
 
 -- ===== MESSAGES =====
@@ -465,7 +499,7 @@ begin
   end if;
   
   -- Get random seed for dicebear avatar
-  random_seed := get_random_avatar_seed();
+  random_seed := public.get_random_avatar_seed();
   
   -- Generate dicebear avatar url
   avatar_url_value := 'https://api.dicebear.com/9.x/thumbs/png?seed=' || random_seed;
@@ -658,3 +692,25 @@ alter publication supabase_realtime add table public.interactions;
 
 -- ===== END REALTIME CONFIGURATION =====
 */
+
+-- ===== HELPER FUNCTIONS FOR DEBUGGING =====
+
+-- Function to check if a chat exists (bypasses RLS for debugging)
+create or replace function check_chat_exists(p_chat_id uuid)
+returns boolean
+language plpgsql
+security definer
+as $$
+begin
+  return exists (
+    select 1
+    from public.chats
+    where id = p_chat_id
+  );
+end;
+$$;
+
+-- Grant execute to authenticated users
+grant execute on function check_chat_exists(uuid) to authenticated;
+
+-- ===== END HELPER FUNCTIONS =====

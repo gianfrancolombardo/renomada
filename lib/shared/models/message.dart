@@ -22,17 +22,29 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
-    return Message(
-      id: json['id'] as String,
-      chatId: json['chat_id'] as String,
-      senderId: json['sender_id'] as String,
-      content: json['content'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      status: MessageStatus.values.firstWhere(
-        (v) => v.name == json['status'],
-        orElse: () => MessageStatus.sent,
-      ),
-    );
+    try {
+      return Message(
+        id: json['id'] as String,
+        chatId: json['chat_id'] as String,
+        senderId: json['sender_id'] as String,
+        content: json['content'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String),
+        status: MessageStatus.values.firstWhere(
+          (v) => v.name == (json['status'] ?? 'sent'),
+          orElse: () => MessageStatus.sent,
+        ),
+      );
+    } catch (e) {
+      print('❌ [Message.fromJson] Error: $e');
+      print('🔍 [Message.fromJson] JSON keys: ${json.keys}');
+      print('🔍 [Message.fromJson] id: ${json['id']} (${json['id']?.runtimeType})');
+      print('🔍 [Message.fromJson] chat_id: ${json['chat_id']} (${json['chat_id']?.runtimeType})');
+      print('🔍 [Message.fromJson] sender_id: ${json['sender_id']} (${json['sender_id']?.runtimeType})');
+      print('🔍 [Message.fromJson] content: ${json['content']} (${json['content']?.runtimeType})');
+      print('🔍 [Message.fromJson] created_at: ${json['created_at']} (${json['created_at']?.runtimeType})');
+      print('🔍 [Message.fromJson] status: ${json['status']} (${json['status']?.runtimeType})');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {

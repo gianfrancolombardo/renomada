@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import '../../../shared/widgets/unified_empty_state.dart';
 
 class FeedEmptyState extends StatelessWidget {
   final double selectedRadius;
@@ -14,160 +18,72 @@ class FeedEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.explore_off,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No hay artículos cerca',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No encontramos artículos dentro de ${selectedRadius.toInt()} km de tu ubicación.',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            
-            // Radius selector
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Prueba con un radio mayor',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [25, 50].map((radius) {
-                      final isSelected = radius == selectedRadius;
-                      return GestureDetector(
-                        onTap: () => onRadiusChanged(radius.toDouble()),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                          child: Text(
-                            '${radius} km',
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(context).colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Alternative actions
-            Column(
-              children: [
-                Text(
-                  'O puedes:',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildActionChip(
-                      context,
-                      icon: Icons.add,
-                      label: 'Publicar',
-                      onTap: () {
-                        // TODO: Navigate to create item
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Función de publicar próximamente')),
-                        );
-                      },
-                    ),
-                    _buildActionChip(
-                      context,
-                      icon: Icons.refresh,
-                      label: 'Actualizar',
-                      onTap: onRefresh,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return UnifiedEmptyState(
+      icon: LucideIcons.searchX,
+      title: 'No hay artículos cerca',
+      subtitle: 'No encontramos artículos dentro de ${selectedRadius.toInt()} km de tu ubicación.',
+      customContent: _buildRadiusSelector(context),
+      primaryButtonText: 'Publicar artículo',
+      primaryButtonIcon: LucideIcons.plus,
+      onPrimaryButtonPressed: () => context.go('/my-items'),
+      secondaryButtonText: 'Actualizar',
+      secondaryButtonIcon: LucideIcons.refreshCw,
+      onSecondaryButtonPressed: onRefresh,
     );
   }
 
-  Widget _buildActionChip(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
+  Widget _buildRadiusSelector(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Prueba con un radio mayor',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [25, 50].map((radius) {
+              final isSelected = radius == selectedRadius;
+              return GestureDetector(
+                onTap: () => onRadiusChanged(radius.toDouble()),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  child: Text(
+                    '${radius} km',
+                    style: TextStyle(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

@@ -57,31 +57,32 @@ class ChatHeader extends StatelessWidget {
             ],
           ),
         ),
-        PopupMenuButton<String>(
-          onSelected: (value) => _handleMenuAction(context, value),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'status',
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline),
-                  SizedBox(width: 8),
-                  Text('Cambiar estado'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'report',
-              child: Row(
-                children: [
-                  Icon(Icons.report_outlined),
-                  SizedBox(width: 8),
-                  Text('Reportar'),
-                ],
-              ),
-            ),
-          ],
-        ),
+        // Menu oculto por ahora
+        // PopupMenuButton<String>(
+        //   onSelected: (value) => _handleMenuAction(context, value),
+        //   itemBuilder: (context) => [
+        //     const PopupMenuItem(
+        //       value: 'status',
+        //       child: Row(
+        //         children: [
+        //           Icon(Icons.info_outline),
+        //           SizedBox(width: 8),
+        //           Text('Cambiar estado'),
+        //         ],
+        //       ),
+        //     ),
+        //     const PopupMenuItem(
+        //       value: 'report',
+        //       child: Row(
+        //         children: [
+        //           Icon(Icons.report_outlined),
+        //           SizedBox(width: 8),
+        //           Text('Reportar'),
+        //         ],
+        //       ),
+        //     ),
+        //   ],
+        // ),
       ],
     );
   }

@@ -135,8 +135,7 @@ class FeedService {
       await SupabaseConfig.from('interactions').upsert({
         'user_id': user.id,
         'item_id': itemId,
-        'action': action,
-        'created_at': DateTime.now().toIso8601String(),
+        'action': action
       });
 
       print('✅ [FeedService] Interaction recorded successfully');
@@ -200,8 +199,7 @@ class FeedService {
         'item_id': itemId,
         'a_user_id': user.id,
         'b_user_id': ownerId,
-        'status': 'coordinating',
-        'created_at': DateTime.now().toIso8601String(),
+        'status': 'coordinating'
       }).select('id').single();
 
       final chatId = chatResponse['id'] as String;
@@ -212,11 +210,26 @@ class FeedService {
         'chat_id': chatId,
         'sender_id': user.id,
         'content': 'Me interesa el artículo "$itemTitle". ¿Está disponible?',
-        'status': 'sent',
-        'created_at': DateTime.now().toIso8601String(),
+        'status': 'sent'
       });
 
       print('💌 [FeedService] Initial message sent');
+      
+      // Wait a bit to ensure the chat is fully created
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Verify chat exists
+      final verifyChat = await SupabaseConfig.from('chats')
+          .select('id')
+          .eq('id', chatId)
+          .maybeSingle();
+      
+      if (verifyChat == null) {
+        print('❌ [FeedService] Chat verification failed!');
+        throw Exception('Chat was not created properly');
+      }
+      
+      print('✅ [FeedService] Chat verified successfully');
       return chatId;
     } catch (e) {
       print('❌ [FeedService] Error creating chat: $e');

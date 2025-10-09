@@ -38,6 +38,7 @@ class ProfileService {
     String? avatarUrl,
     Map<String, dynamic>? lastLocation,
     bool? isLocationOptOut,
+    bool? hasSeenOnboarding,
   }) async {
     final user = SupabaseConfig.currentUser;
     if (user == null) throw Exception('User not authenticated');
@@ -47,6 +48,7 @@ class ProfileService {
     if (username != null) updateData['username'] = username;
     if (avatarUrl != null) updateData['avatar_url'] = avatarUrl;
     if (isLocationOptOut != null) updateData['is_location_opt_out'] = isLocationOptOut;
+    if (hasSeenOnboarding != null) updateData['has_seen_onboarding'] = hasSeenOnboarding;
 
     // Handle location separately with PostGIS conversion
     if (lastLocation != null) {
@@ -106,6 +108,7 @@ class ProfileService {
       isLocationOptOut: true,
     );
   }
+
 
   // Check if username is available
   Future<bool> isUsernameAvailable(String username) async {
@@ -263,6 +266,25 @@ class ProfileService {
           .remove([filePath]);
     } catch (e) {
       // Ignore errors when deleting avatar
+    }
+  }
+
+  // Mark onboarding as seen
+  Future<void> markOnboardingAsSeen() async {
+    try {
+      final user = SupabaseConfig.currentUser;
+      if (user == null) {
+        throw Exception('No authenticated user');
+      }
+
+      await SupabaseConfig.from('profiles')
+          .update({'has_seen_onboarding': true})
+          .eq('user_id', user.id);
+
+      print('✅ Onboarding marked as seen');
+    } catch (e) {
+      print('❌ Error marking onboarding as seen: $e');
+      rethrow;
     }
   }
 }

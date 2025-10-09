@@ -27,6 +27,7 @@ class MessageBubble extends StatelessWidget {
         mainAxisAlignment: isFromCurrentUser
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isFromCurrentUser) ...[
             CircleAvatar(
