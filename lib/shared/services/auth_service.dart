@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/config/supabase_config.dart';
 
 class AuthService {
@@ -20,15 +21,14 @@ class AuthService {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    String? username,
   }) async {
     final response = await SupabaseConfig.client.auth.signUp(
       email: email,
       password: password,
-      data: username != null ? {'username': username} : null,
     );
 
     // Profile will be created automatically by the database trigger
+    // Username is auto-generated from email (part before @)
     // Just wait a bit for it to be created
     if (response.user != null) {
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -51,12 +51,29 @@ class AuthService {
   // Sign in with OAuth provider
   Future<bool> signInWithProvider(OAuthProvider provider) async {
     try {
-      await SupabaseConfig.client.auth.signInWithOAuth(
+      // Determine redirect URL based on platform
+      String redirectTo;
+      if (kIsWeb) {
+        // For web, use current origin + callback path
+        // This will be set dynamically based on the deployment URL
+        final currentUrl = Uri.base.toString();
+        final baseUrl = currentUrl.replaceAll(RegExp(r'/#.*$'), '');
+        redirectTo = '$baseUrl/login';
+      } else {
+        // For mobile native apps, use deep link
+        redirectTo = 'io.supabase.renomada://login-callback/';
+      }
+      
+      final response = await SupabaseConfig.client.auth.signInWithOAuth(
         provider,
-        redirectTo: 'io.supabase.renomada://login-callback/',
+        redirectTo: redirectTo,
+        // Launch URL in system browser for better mobile UX (only on mobile)
+        authScreenLaunchMode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
       );
-      return true;
+      
+      return response;
     } catch (e) {
+      print('OAuth sign in error: $e');
       return false;
     }
   }

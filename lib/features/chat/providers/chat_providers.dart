@@ -23,5 +23,5 @@ final chatProvider = ChangeNotifierProvider<ChatProvider>((ref) {
 // Message provider
 final messageProvider = ChangeNotifierProvider<MessageProvider>((ref) {
   final messageService = ref.watch(messageServiceProvider);
-  return MessageProvider(messageService);
+  return MessageProvider(messageService, ref);
 });

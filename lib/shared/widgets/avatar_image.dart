@@ -41,6 +41,17 @@ class _AvatarImageState extends State<AvatarImage> {
   Future<void> _getSignedUrl() async {
     if (widget.avatarUrl == null) return;
 
+    // ✨ OPTIMIZATION: If it's an external URL (dicebear, etc.), use directly without processing
+    if (_isExternalUrl(widget.avatarUrl!)) {
+      if (mounted) {
+        setState(() {
+          _signedUrl = widget.avatarUrl;
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -61,6 +72,19 @@ class _AvatarImageState extends State<AvatarImage> {
         });
       }
     }
+  }
+
+  /// Check if avatar URL is external (not from Supabase storage)
+  bool _isExternalUrl(String avatarUrl) {
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      // Check if it's a Supabase storage URL
+      if (avatarUrl.contains('supabase.co') || avatarUrl.contains('supabase.storage')) {
+        return false;
+      }
+      // It's an external URL (dicebear, ui-avatars, etc.)
+      return true;
+    }
+    return false;
   }
 
   @override

@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/services/location_service.dart';
+import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/location_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -29,12 +29,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
         // Location obtained, check onboarding status and navigate accordingly
         _navigateAfterLocationObtained();
       } else if (next.error != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error!),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        SnackbarUtils.showError(context, next.error!);
       }
     });
 
@@ -73,7 +68,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
               
               // Title
               Text(
-                'Ubicación para ReNomada',
+                'Para mostrarte objetos cerca',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onBackground,
@@ -96,7 +91,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                   ),
                 ),
                 child: Text(
-                  'Para mostrarte artículos cerca de ti y conectar con nómadas locales, necesitamos acceso a tu ubicación.',
+                  'Mostramos objetos cerca de ti, nunca tu ruta. Puedes cambiarlo cuando quieras.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.4,
@@ -154,7 +149,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
               ),
               SizedBox(width: 10.w),
               Text(
-                'Tu privacidad es importante',
+                'Control total sobre tu ubicación',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -243,7 +238,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                     color: Theme.of(context).colorScheme.onPrimary,
                   )
                 : Text(
-                    'Permitir ubicación',
+                    'Activar ubicación',
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
@@ -267,7 +262,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
               ),
             ),
             child: Text(
-              'Saltar por ahora',
+              'Continuar sin ubicación',
               style: TextStyle(
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w500,
@@ -286,7 +281,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
             });
           },
           child: Text(
-            _hasSeenExplanation ? 'Ocultar detalles' : 'Ver detalles de privacidad',
+            _hasSeenExplanation ? 'Ocultar detalles' : 'Más sobre privacidad',
             style: TextStyle(
               fontSize: 14.sp,
               color: Theme.of(context).colorScheme.primary,

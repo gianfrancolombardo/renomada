@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
@@ -8,29 +9,71 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../shared/screens/main_screens.dart';
 import '../../core/config/supabase_config.dart';
+import '../../features/auth/providers/auth_provider.dart';
 
 class AppRouter {
-  static GoRouter createRouter(String initialLocation) {
+  static GoRouter createRouter(String initialLocation, ProviderContainer container) {
     return GoRouter(
       initialLocation: initialLocation,
       redirect: (context, state) {
-        // Check if user is authenticated
-        final isAuthenticated = SupabaseConfig.isAuthenticated;
-        final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/signup';
+        // Check if this is an OAuth callback (has code or access_token in query)
+        final uri = state.uri;
+        final hasAuthCode = uri.queryParameters.containsKey('code');
+        final hasAccessToken = uri.fragment.contains('access_token=');
         
-        // If user is not authenticated and trying to access protected routes
-        if (!isAuthenticated && !isLoggingIn) {
+        if (hasAuthCode || hasAccessToken) {
+          // This is an OAuth callback, let Supabase handle it
+          // Redirect to login screen which will handle the auth state change
+          print('OAuth callback detected, redirecting to login');
           return '/login';
         }
         
-        // If user is authenticated and trying to access login/signup
-        if (isAuthenticated && isLoggingIn) {
-          return '/location-permission';
+        // Check if user is authenticated
+        final isAuthenticated = SupabaseConfig.isAuthenticated;
+        final currentPath = state.matchedLocation;
+        
+        // Public routes that don't require authentication
+        final isPublicRoute = currentPath == '/' || 
+                              currentPath == '/login' || 
+                              currentPath == '/signup' ||
+                              currentPath == '/onboarding';
+        
+        // If user is authenticated and trying to access public routes, check onboarding status
+        if (isAuthenticated && isPublicRoute) {
+          final authState = container.read(authProvider);
+          final profile = authState.profile;
+          
+          // If trying to access onboarding but already seen it, redirect to feed
+          if (currentPath == '/onboarding' && profile != null && profile.hasSeenOnboarding) {
+            return '/feed';
+          }
+          
+          // If accessing other public routes and hasn't seen onboarding, redirect to onboarding
+          if (currentPath != '/onboarding' && profile != null && !profile.hasSeenOnboarding) {
+            return '/onboarding';
+          }
+          
+          // Otherwise redirect to feed
+          if (currentPath != '/onboarding') {
+            return '/feed';
+          }
+        }
+        
+        // If user is not authenticated and trying to access protected routes
+        if (!isAuthenticated && !isPublicRoute) {
+          return '/';
         }
         
         return null; // No redirect needed
       },
       routes: [
+        // Welcome screen - Root route
+        GoRoute(
+          path: '/',
+          name: 'welcome',
+          builder: (context, state) => const WelcomeScreen(),
+        ),
+        
         // Auth routes
         GoRoute(
           path: '/login',
@@ -103,7 +146,6 @@ class AppRouter {
     );
   }
   
-  // Keep the old static router for backward compatibility
-  static final GoRouter router = createRouter('/login');
+  // Note: Static router removed - use createRouter with ProviderContainer instead
 }
 

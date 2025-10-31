@@ -28,7 +28,7 @@ class ChatErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Error al cargar conversaciones',
+              'Error al cargar chats',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),

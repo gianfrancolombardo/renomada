@@ -2,16 +2,22 @@ import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 import '../../core/config/supabase_config.dart';
 import '../models/item.dart';
+import 'signed_url_cache.dart';
 
 class ItemService {
   static final ItemService _instance = ItemService._internal();
   factory ItemService() => _instance;
   ItemService._internal();
 
+  // Use getter to ensure proper initialization (fixes Flutter Web issues)
+  SignedUrlCache get _urlCache => SignedUrlCache();
+
   // Create new item
   Future<Item> createItem({
     required String title,
     required String description,
+    required ItemCondition condition,
+    required ExchangeType exchangeType,
     required List<Uint8List> photos,
   }) async {
     final user = SupabaseConfig.currentUser;
@@ -27,6 +33,8 @@ class ItemService {
         'title': title,
         'description': description,
         'status': ItemStatus.available.name,
+        'condition': itemConditionToString(condition),
+        'exchange_type': exchangeTypeToString(exchangeType),
       };
 
       final response = await SupabaseConfig.from('items')
@@ -94,23 +102,116 @@ class ItemService {
     }
   }
 
-  // Get items owned by the current user (only available ones)
+  // Get all items owned by the current user (available and exchanged)
   Future<List<Item>> getUserItems() async {
     final user = SupabaseConfig.currentUser;
     if (user == null) return [];
 
     try {
-      final response = await SupabaseConfig.from('items')
-          .select('*')
-          .eq('owner_id', user.id)
-          .eq('status', 'available') // Only show available items
-          .order('created_at', ascending: false);
+      print('🔍 [ItemService] Fetching all items for user: ${user.id}');
+      
+      // ✨ OPTIMIZATION: Try to use optimized RPC function first
+      try {
+        final response = await SupabaseConfig.client.rpc(
+          'get_user_items_with_photos',
+          params: {'p_user_id': user.id},
+        );
 
-      return (response as List).map((json) => Item.fromJson(json)).toList();
+        final itemsResponse = response is List ? response : (response != null ? [response] : []);
+        
+        if (itemsResponse.isEmpty) {
+          print('ℹ️ [ItemService] No items found');
+          return [];
+        }
+
+        // ✨ OPTIMIZATION: Collect all photo paths for batch processing
+        final List<String> photoPaths = [];
+        for (final itemData in itemsResponse) {
+          if (itemData is Map) {
+            final photoPath = itemData['first_photo_path'];
+            if (photoPath != null && photoPath is String && photoPath.isNotEmpty) {
+              photoPaths.add(photoPath);
+            }
+          }
+        }
+
+        // ✨ OPTIMIZATION: Batch process signed URLs (cache URLs for later use)
+        await _getBatchSignedUrls(photoPaths, 'item-photos');
+
+        // Process items
+        final List<Item> items = [];
+        for (final itemData in itemsResponse) {
+          try {
+            if (itemData is! Map) {
+              print('⚠️ [ItemService] Invalid item data format: $itemData');
+              continue;
+            }
+
+            // Convert to Map<String, dynamic> for Item.fromJson
+            final itemJson = Map<String, dynamic>.from(itemData);
+            // Remove first_photo_path as it's not part of Item model
+            itemJson.remove('first_photo_path');
+
+            // Build Item from RPC response
+            final item = Item.fromJson(itemJson);
+            
+            // Photo URLs are cached and will be retrieved by ItemPhoto widget via cache
+            
+            items.add(item);
+          } catch (e) {
+            print('❌ [ItemService] Error processing item: $e');
+            print('🔍 [ItemService] Item data: $itemData');
+            continue;
+          }
+        }
+
+        print('✅ [ItemService] Loaded ${items.length} items with optimized query');
+        return items;
+      } catch (rpcError) {
+        print('⚠️ [ItemService] Optimized RPC not available, using fallback: $rpcError');
+        // Fallback to original method
+        return await _getUserItemsFallback();
+      }
     } catch (e) {
-      print('Error fetching user items: $e');
+      print('❌ [ItemService] Error fetching user items: $e');
+      print('❌ [ItemService] Error type: ${e.runtimeType}');
+      
+      // If it's a connectivity issue, provide more specific error
+      if (e.toString().contains('Failed to fetch') || e.toString().contains('ClientException')) {
+        throw Exception('Error de conexión. Verifica tu conexión a internet.');
+      }
+      
       throw Exception('Error al cargar tus items: $e');
     }
+  }
+
+  // Fallback method using original implementation
+  Future<List<Item>> _getUserItemsFallback() async {
+    final user = SupabaseConfig.currentUser!;
+    
+    // Test basic connectivity first
+    await SupabaseConfig.from('items')
+        .select('id')
+        .limit(1);
+    print('🔍 [ItemService] Basic connectivity test passed');
+    
+    final response = await SupabaseConfig.from('items')
+        .select('*')
+        .eq('owner_id', user.id)
+        .inFilter('status', [ItemStatus.available.name, ItemStatus.exchanged.name])
+        .order('created_at', ascending: false);
+
+    print('📦 [ItemService] Received ${(response as List).length} items');
+    
+    return (response as List).map((json) {
+      try {
+        return Item.fromJson(json);
+      } catch (e) {
+        print('❌ [ItemService] Error parsing item: $e');
+        print('🔍 [ItemService] Item JSON: $json');
+        rethrow;
+      }
+    }).toList();
   }
 
   // Get a single item by ID
@@ -159,6 +260,26 @@ class ItemService {
         .eq('owner_id', user.id); // Ensure only owner can delete
   }
 
+  // Change item status (available, exchanged, paused)
+  Future<Item> changeItemStatus(String itemId, ItemStatus newStatus) async {
+    final user = SupabaseConfig.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
+    final updateData = {
+      'status': newStatus.name,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    final response = await SupabaseConfig.from('items')
+        .update(updateData)
+        .eq('id', itemId)
+        .eq('owner_id', user.id) // Ensure only owner can change status
+        .select()
+        .single();
+
+    return Item.fromJson(response);
+  }
+
   // Actually delete an item (remove from database)
   Future<void> permanentlyDeleteItem(String itemId) async {
     final user = SupabaseConfig.currentUser;
@@ -181,20 +302,18 @@ class ItemService {
           .eq('item_id', itemId)
           .order('created_at', ascending: true);
 
-      final photoUrls = <String>[];
+      final photoPaths = <String>[];
       
       for (final photoRecord in response as List) {
         final path = photoRecord['path'] as String;
-        
-        // Get signed URL for the photo
-        final signedUrl = await SupabaseConfig.storage
-            .from('item-photos')
-            .createSignedUrl(path, 3600); // 1 hour expiration
-        
-        photoUrls.add(signedUrl);
+        photoPaths.add(path);
       }
-      
-      return photoUrls;
+
+      if (photoPaths.isEmpty) return [];
+
+      // ✨ OPTIMIZATION: Batch process signed URLs
+      final photoUrls = await _getBatchSignedUrls(photoPaths, 'item-photos');
+      return photoUrls.values.where((url) => url.isNotEmpty).toList();
     } catch (e) {
       print('Error fetching item photos: $e');
       return [];
@@ -204,10 +323,84 @@ class ItemService {
   // Get first photo URL for an item (for display in lists)
   Future<String?> getItemFirstPhoto(String itemId) async {
     try {
-      final photos = await getItemPhotos(itemId);
-      return photos.isNotEmpty ? photos.first : null;
+      // ✨ OPTIMIZATION: Get just the first photo path
+      final response = await SupabaseConfig.from('item_photos')
+          .select('path')
+          .eq('item_id', itemId)
+          .order('created_at', ascending: true)
+          .limit(1);
+
+      if (response.isEmpty) return null;
+
+      final path = response.first['path'] as String;
+      
+      // ✨ OPTIMIZATION: Use cache
+      return await _getSignedUrlWithCache(path, 'item-photos');
     } catch (e) {
       print('Error fetching first photo: $e');
+      return null;
+    }
+  }
+
+  /// ✨ OPTIMIZATION: Batch process signed URLs to reduce API calls
+  Future<Map<String, String>> _getBatchSignedUrls(List<String> paths, String bucket) async {
+    final Map<String, String> urlMap = {};
+    
+    if (paths.isEmpty) return urlMap;
+    
+    print('🔄 [ItemService] Processing ${paths.length} signed URLs for $bucket');
+    
+    // Process in batches of 5 to avoid rate limits
+    for (int i = 0; i < paths.length; i += 5) {
+      final batch = paths.skip(i).take(5).toList();
+      
+      final futures = batch.map((path) async {
+        // Check cache first
+        final cachedUrl = _urlCache.getCachedUrl(path);
+        if (cachedUrl != null) {
+          return MapEntry(path, cachedUrl);
+        }
+        
+        try {
+          final url = await SupabaseConfig.storage
+              .from(bucket)
+              .createSignedUrl(path, 3600);
+          
+          // Cache the URL
+          _urlCache.cacheUrl(path, url, 3600);
+          return MapEntry(path, url);
+        } catch (e) {
+          print('⚠️ [ItemService] Failed to get signed URL for $path: $e');
+          return MapEntry(path, '');
+        }
+      });
+      
+      final results = await Future.wait(futures);
+      urlMap.addAll(Map.fromEntries(results));
+    }
+    
+    print('✅ [ItemService] Generated ${urlMap.length} signed URLs');
+    return urlMap;
+  }
+
+  /// Get signed URL with cache check
+  Future<String?> _getSignedUrlWithCache(String path, String bucket) async {
+    // Check cache first
+    final cachedUrl = _urlCache.getCachedUrl(path);
+    if (cachedUrl != null) {
+      return cachedUrl;
+    }
+    
+    try {
+      final url = await SupabaseConfig.storage
+          .from(bucket)
+          .createSignedUrl(path, 3600);
+      
+      // Cache the URL
+      _urlCache.cacheUrl(path, url, 3600);
+      return url;
+    } catch (e) {
+      print('⚠️ [ItemService] Failed to get signed URL for $path: $e');
       return null;
     }
   }

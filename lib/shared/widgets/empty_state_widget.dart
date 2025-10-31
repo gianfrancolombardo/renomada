@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
 
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
@@ -25,28 +24,35 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icon
+            // Icon - Icono de sección con tertiaryContainer
             Container(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.tertiaryContainer,
                 borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               child: Icon(
                 icon,
                 size: 40,
-                color: AppTheme.primaryColor,
+                color: Theme.of(context).colorScheme.onTertiaryContainer,
               ),
             ),
             
             const SizedBox(height: 24),
             
-            // Title
+            // Title - Título con onSurface (alto contraste)
             Text(
               title,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTheme.textPrimaryColor,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -54,11 +60,11 @@ class EmptyStateWidget extends StatelessWidget {
             
             const SizedBox(height: 8),
             
-            // Subtitle
+            // Subtitle - Texto soporte con onSurface @ 72%
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textSecondaryColor,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.72),
               ),
               textAlign: TextAlign.center,
             ),
@@ -113,7 +119,7 @@ class EmptyChatsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return EmptyStateWidget(
       icon: Icons.chat_bubble_outline,
-      title: 'No tienes conversaciones',
+      title: 'No tienes chats',
       subtitle: 'Explora artículos cerca de ti y comienza a chatear con otros nómadas.',
       actionText: onStartExploring != null ? 'Explorar artículos' : null,
       onActionPressed: onStartExploring,

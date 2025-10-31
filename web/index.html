@@ -31,6 +31,15 @@
 
   <title>renomada</title>
   <link rel="manifest" href="manifest.json">
+  
+  <script>
+    // Handle OAuth callback
+    if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+      console.log('OAuth callback detected');
+      // The Supabase Flutter SDK will handle the auth automatically
+      // Just ensure the page loads normally
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

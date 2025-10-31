@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/models/item.dart';
 import '../../../shared/services/item_service.dart';
+import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/item_provider.dart';
 
 class EditItemBottomSheet extends ConsumerStatefulWidget {
@@ -28,12 +27,16 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
   Uint8List? _selectedPhoto;
   bool _isPickingImage = false;
   bool _isLoading = false;
+  late ItemCondition _selectedCondition;
+  late ExchangeType _selectedExchangeType;
 
   @override
   void initState() {
     super.initState();
     _titleController.text = widget.item.title;
     _descriptionController.text = widget.item.description ?? '';
+    _selectedCondition = widget.item.condition;
+    _selectedExchangeType = widget.item.exchangeType;
   }
 
   @override
@@ -71,16 +74,16 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
               children: [
                 Icon(
                   Icons.edit_outlined,
-                  color: AppTheme.primaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 24.sp,
                 ),
                 SizedBox(width: 12.w),
                 Text(
-                  'Editar Artículo',
+                  'Editar objeto',
                   style: TextStyle(
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimaryColor,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const Spacer(),
@@ -88,8 +91,8 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade200,
-                    foregroundColor: Colors.grey.shade600,
+                    backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                    foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -112,6 +115,16 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
                     
                     // Description field
                     _buildDescriptionField(),
+                    
+                    SizedBox(height: 24.h),
+                    
+                    // Condition selector
+                    _buildConditionSelector(),
+                    
+                    SizedBox(height: 24.h),
+                    
+                    // Exchange type selector
+                    _buildExchangeTypeSelector(),
                     
                     SizedBox(height: 24.h),
                     
@@ -144,7 +157,7 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimaryColor,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8.h),
@@ -158,11 +171,11 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
               borderRadius: BorderRadius.circular(12.r),
             ),
             filled: true,
-            fillColor: AppTheme.inputFillColor,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Ingresa un título para tu artículo';
+              return 'Ingresa un título para tu objeto';
             }
             if (value.trim().length < 3) {
               return 'El título debe tener al menos 3 caracteres';
@@ -183,33 +196,128 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimaryColor,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8.h),
         TextFormField(
           controller: _descriptionController,
           enabled: !_isLoading,
-          maxLines: 4,
+          maxLines: 2,
           decoration: InputDecoration(
-            hintText: 'Describe tu artículo, su estado, por qué lo intercambias...',
+            hintText: 'Describe tu objeto, su estado, por qué lo regalas...',
             prefixIcon: const Icon(Icons.description),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
             ),
             filled: true,
-            fillColor: AppTheme.inputFillColor,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             alignLabelWithHint: true,
           ),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Ingresa una descripción para tu artículo';
+              return 'Ingresa una descripción para tu objeto';
             }
             if (value.trim().length < 10) {
               return 'La descripción debe tener al menos 10 caracteres';
             }
             return null;
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConditionSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Estado del objeto',
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        SizedBox(height: 12.h),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ItemCondition>(
+            segments: [
+              ButtonSegment<ItemCondition>(
+                value: ItemCondition.likeNew,
+                label: Text(ItemCondition.likeNew.label, style: TextStyle(fontSize: 12.sp)),
+                icon: Icon(ItemCondition.likeNew.iconData, size: 18.sp),
+              ),
+              ButtonSegment<ItemCondition>(
+                value: ItemCondition.used,
+                label: Text(ItemCondition.used.label, style: TextStyle(fontSize: 12.sp)),
+                icon: Icon(ItemCondition.used.iconData, size: 18.sp),
+              ),
+              ButtonSegment<ItemCondition>(
+                value: ItemCondition.needsRepair,
+                label: Text(ItemCondition.needsRepair.label, style: TextStyle(fontSize: 12.sp)),
+                icon: Icon(ItemCondition.needsRepair.iconData, size: 18.sp),
+              ),
+            ],
+            selected: {_selectedCondition},
+            onSelectionChanged: _isLoading
+                ? null
+                : (Set<ItemCondition> newSelection) {
+                    setState(() {
+                      _selectedCondition = newSelection.first;
+                    });
+                  },
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExchangeTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '¿Qué quieres hacer?',
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        SizedBox(height: 12.h),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ExchangeType>(
+            segments: [
+              ButtonSegment<ExchangeType>(
+                value: ExchangeType.gift,
+                label: Text(ExchangeType.gift.label, style: TextStyle(fontSize: 12.sp)),
+                icon: Icon(ExchangeType.gift.iconData, size: 18.sp),
+              ),
+              ButtonSegment<ExchangeType>(
+                value: ExchangeType.exchange,
+                label: Text(ExchangeType.exchange.label, style: TextStyle(fontSize: 12.sp)),
+                icon: Icon(ExchangeType.exchange.iconData, size: 18.sp),
+              ),
+            ],
+            selected: {_selectedExchangeType},
+            onSelectionChanged: _isLoading
+                ? null
+                : (Set<ExchangeType> newSelection) {
+                    setState(() {
+                      _selectedExchangeType = newSelection.first;
+                    });
+                  },
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ),
       ],
     );
@@ -224,7 +332,7 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w500,
-            color: AppTheme.textPrimaryColor,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8.h),
@@ -305,36 +413,33 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            ),
-            child: Text('Cancelar'),
+    return SizedBox(
+      width: double.infinity,
+      height: 56.h,
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : _handleSubmit,
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
           ),
         ),
-        SizedBox(width: 16.w),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _handleSubmit,
-            style: ElevatedButton.styleFrom(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            ),
-            child: _isLoading
-                ? const LoadingWidget(size: 20)
-                : const Text('Guardar Cambios'),
-          ),
+        icon: _isLoading
+            ? SizedBox(
+                width: 20.w,
+                height: 20.h,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              )
+            : Icon(Icons.check_circle_outline, size: 24.sp),
+        label: Text(
+          _isLoading ? 'Guardando...' : 'Guardar',
+          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),
         ),
-      ],
+      ),
     );
   }
 
@@ -387,12 +492,7 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al seleccionar imagen: ${e.toString()}'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
+      SnackbarUtils.showError(context, 'Error al seleccionar imagen: ${e.toString()}');
     } finally {
       setState(() {
         _isPickingImage = false;
@@ -418,6 +518,8 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
       final updatedItem = widget.item.copyWith(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        condition: _selectedCondition,
+        exchangeType: _selectedExchangeType,
         updatedAt: DateTime.now(),
       );
 
@@ -434,22 +536,12 @@ class _EditItemBottomSheetState extends ConsumerState<EditItemBottomSheet> {
       await ref.read(userItemsProvider.notifier).loadUserItems();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Artículo actualizado correctamente'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Objeto actualizado correctamente');
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar: ${e.toString()}'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Error al actualizar: ${e.toString()}');
       }
     } finally {
       setState(() {

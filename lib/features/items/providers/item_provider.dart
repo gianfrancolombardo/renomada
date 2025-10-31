@@ -38,6 +38,8 @@ class ItemCreationNotifier extends StateNotifier<ItemCreationState> {
   Future<bool> createItem({
     required String title,
     required String description,
+    required ItemCondition condition,
+    required ExchangeType exchangeType,
     required List<Uint8List> photos,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -46,6 +48,8 @@ class ItemCreationNotifier extends StateNotifier<ItemCreationState> {
       final item = await _itemService.createItem(
         title: title,
         description: description,
+        condition: condition,
+        exchangeType: exchangeType,
         photos: photos,
       );
 
@@ -113,8 +117,10 @@ class UserItemsNotifier extends StateNotifier<UserItemsState> {
 
     try {
       final items = await _itemService.getUserItems();
+      // Sort items: available first, then exchanged (both sorted by creation date desc)
+      final sortedItems = _sortUserItems(items);
       state = state.copyWith(
-        items: items,
+        items: sortedItems,
         isLoading: false,
         error: null,
       );
@@ -124,6 +130,21 @@ class UserItemsNotifier extends StateNotifier<UserItemsState> {
         error: e.toString(),
       );
     }
+  }
+
+  // Sort items: available first (newest first), then exchanged (newest first)
+  List<Item> _sortUserItems(List<Item> items) {
+    final availableItems = items
+        .where((item) => item.status == ItemStatus.available)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    final exchangedItems = items
+        .where((item) => item.status == ItemStatus.exchanged)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    return [...availableItems, ...exchangedItems];
   }
 
   // Add item to list (after creation)
@@ -143,7 +164,9 @@ class UserItemsNotifier extends StateNotifier<UserItemsState> {
     final updatedItems = state.items.map((item) {
       return item.id == updatedItem.id ? updatedItem : item;
     }).toList();
-    state = state.copyWith(items: updatedItems);
+    // Re-sort items after update to maintain correct order
+    final sortedItems = _sortUserItems(updatedItems);
+    state = state.copyWith(items: sortedItems);
   }
 }
 

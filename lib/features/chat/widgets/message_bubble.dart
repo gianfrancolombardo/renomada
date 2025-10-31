@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/models/message.dart';
 import '../../../shared/models/user_profile.dart';
-import '../../../shared/services/profile_service.dart';
-import '../../../core/config/supabase_config.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -27,23 +25,7 @@ class MessageBubble extends StatelessWidget {
         mainAxisAlignment: isFromCurrentUser
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isFromCurrentUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Text(
-                'U', // This will be replaced with actual user data from chat context
-                style: TextStyle(
-                  color: colorScheme.onPrimaryContainer,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
           Flexible(
             child: Container(
               constraints: BoxConstraints(
@@ -55,8 +37,8 @@ class MessageBubble extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: isFromCurrentUser
-                    ? colorScheme.primary
-                    : colorScheme.surfaceContainerHighest,
+                    ? colorScheme.surfaceVariant
+                    : colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(20).copyWith(
                   bottomLeft: isFromCurrentUser
                       ? const Radius.circular(20)
@@ -73,8 +55,8 @@ class MessageBubble extends StatelessWidget {
                     message.content,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: isFromCurrentUser
-                          ? colorScheme.onPrimary
-                          : colorScheme.onSurface,
+                          ? colorScheme.onSurfaceVariant
+                          : colorScheme.onSecondaryContainer,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -85,8 +67,8 @@ class MessageBubble extends StatelessWidget {
                         _formatTime(message.createdAt),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: isFromCurrentUser
-                              ? colorScheme.onPrimary.withOpacity(0.7)
-                              : colorScheme.outline,
+                              ? colorScheme.onSurfaceVariant.withOpacity(0.7)
+                              : colorScheme.onSecondaryContainer.withOpacity(0.7),
                           fontSize: 11,
                         ),
                       ),
@@ -95,7 +77,7 @@ class MessageBubble extends StatelessWidget {
                         Icon(
                           _getStatusIcon(),
                           size: 12,
-                          color: colorScheme.onPrimary.withOpacity(0.7),
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.7),
                         ),
                       ],
                     ],
@@ -104,13 +86,6 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (isFromCurrentUser) ...[
-            const SizedBox(width: 8),
-            _CurrentUserAvatar(
-              currentUserProfile: currentUserProfile,
-              colorScheme: colorScheme,
-            ),
-          ],
         ],
       ),
     );
@@ -143,93 +118,3 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
-class _CurrentUserAvatar extends StatefulWidget {
-  final UserProfile? currentUserProfile;
-  final ColorScheme colorScheme;
-
-  const _CurrentUserAvatar({
-    required this.currentUserProfile,
-    required this.colorScheme,
-  });
-
-  @override
-  State<_CurrentUserAvatar> createState() => _CurrentUserAvatarState();
-}
-
-class _CurrentUserAvatarState extends State<_CurrentUserAvatar> {
-  String? _signedAvatarUrl;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSignedAvatarUrl();
-  }
-
-  @override
-  void didUpdateWidget(_CurrentUserAvatar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentUserProfile?.avatarUrl != widget.currentUserProfile?.avatarUrl) {
-      _loadSignedAvatarUrl();
-    }
-  }
-
-  Future<void> _loadSignedAvatarUrl() async {
-    if (widget.currentUserProfile?.avatarUrl == null) return;
-    
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final signedUrl = await ProfileService().getAvatarSignedUrl(widget.currentUserProfile!.avatarUrl);
-      if (mounted) {
-        setState(() {
-          _signedAvatarUrl = signedUrl;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading signed avatar URL: $e');
-      if (mounted) {
-        setState(() {
-          _signedAvatarUrl = null;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: widget.colorScheme.secondary,
-      backgroundImage: _signedAvatarUrl != null
-          ? NetworkImage(_signedAvatarUrl!)
-          : null,
-      child: _signedAvatarUrl == null
-          ? _isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      widget.colorScheme.onSecondary,
-                    ),
-                  ),
-                )
-              : Text(
-                  widget.currentUserProfile?.username?.substring(0, 1).toUpperCase() ?? 
-                  SupabaseConfig.currentUser?.email?.substring(0, 1).toUpperCase() ?? 'U',
-                  style: TextStyle(
-                    color: widget.colorScheme.onSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-          : null,
-    );
-  }
-}

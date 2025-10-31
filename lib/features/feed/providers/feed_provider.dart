@@ -103,7 +103,7 @@ class FeedNotifier extends StateNotifier<FeedState> {
       state = state.copyWith(
         items: updatedItems,
         isLoading: false,
-        hasMoreItems: newItems.length >= 20, // Assuming 20 items per page
+        hasMoreItems: newItems.length >= 10, // ✨ Changed: 10 items per page (matching default limit)
         currentPage: refresh ? 1 : state.currentPage + 1,
         error: null,
       );

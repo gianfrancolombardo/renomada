@@ -9,14 +9,17 @@ Texto,Ubicación,Contexto
 "Ingresa tu contraseña",lib/features/auth/screens/login_screen.dart,Error validación contraseña
 "La contraseña debe tener al menos 6 caracteres",lib/features/auth/screens/login_screen.dart,Error validación contraseña longitud
 "Iniciar Sesión",lib/features/auth/screens/login_screen.dart,Botón de inicio de sesión
+"o",lib/features/auth/screens/login_screen.dart,Texto separador entre formulario y Google
 "¿No tienes cuenta? ",lib/features/auth/screens/login_screen.dart,Texto enlace registro
 "Regístrate aquí",lib/features/auth/screens/login_screen.dart,Enlace a registro
 "¿Olvidaste tu contraseña?",lib/features/auth/screens/login_screen.dart,Enlace recuperar contraseña
 "Ingresa tu email primero",lib/features/auth/screens/login_screen.dart,Error al recuperar contraseña
 "Revisa tu email para restablecer la contraseña",lib/features/auth/screens/login_screen.dart,Mensaje éxito recuperar contraseña
+"Continuar con Google",lib/features/auth/widgets/google_sign_in_button.dart,Botón Google por defecto
+"Registrarse con Google",lib/features/auth/screens/signup_screen.dart,Botón Google en registro
 "Crear Cuenta",lib/features/auth/screens/signup_screen.dart,Título AppBar
 "Únete a ReNomada",lib/features/auth/screens/signup_screen.dart,Título pantalla registro
-"Comienza a intercambiar objetos con otros nómadas y forma parte de una comunidad sostenible",lib/features/auth/screens/signup_screen.dart,Subtítulo registro
+"Comienza a intercambiar objetos con otros nómadas y forma parte de una comunidad sostenible.",lib/features/auth/screens/signup_screen.dart,Subtítulo registro
 "Información de Cuenta",lib/features/auth/screens/signup_screen.dart,Título sección formulario
 "tu_usuario",lib/features/auth/screens/signup_screen.dart,Placeholder usuario
 "Ingresa un nombre de usuario",lib/features/auth/screens/signup_screen.dart,Error validación usuario
@@ -31,6 +34,7 @@ Texto,Ubicación,Contexto
 "Repite tu contraseña",lib/features/auth/screens/signup_screen.dart,Placeholder confirmar contraseña
 "Confirma tu contraseña",lib/features/auth/screens/signup_screen.dart,Error validación confirmar contraseña
 "Las contraseñas no coinciden",lib/features/auth/screens/signup_screen.dart,Error contraseñas no coinciden
+"o continúa con Google",lib/features/auth/screens/signup_screen.dart,Texto separador con Google
 "Acepto los ",lib/features/auth/screens/signup_screen.dart,Texto términos
 "términos y condiciones",lib/features/auth/screens/signup_screen.dart,Enlace términos
 " y la ",lib/features/auth/screens/signup_screen.dart,Texto conjunción
@@ -40,6 +44,23 @@ Texto,Ubicación,Contexto
 "Inicia sesión",lib/features/auth/screens/signup_screen.dart,Enlace a login
 "Debes aceptar los términos y condiciones",lib/features/auth/screens/signup_screen.dart,Error términos no aceptados
 "¡Cuenta creada! Revisa tu email para confirmar",lib/features/auth/screens/signup_screen.dart,Mensaje éxito registro
+"¡Bienvenido a ReNomada!",lib/features/auth/screens/onboarding_screen.dart,Título pantalla onboarding
+"Intercambia objetos con otros nómadas en tu ciudad",lib/features/auth/screens/onboarding_screen.dart,Descripción onboarding
+"¿Cómo quieres empezar?",lib/features/auth/screens/onboarding_screen.dart,Título sección acciones
+"Explorar",lib/features/auth/screens/onboarding_screen.dart,Opción explorar onboarding
+"Descubre objetos interesantes cerca de ti",lib/features/auth/screens/onboarding_screen.dart,Descripción explorar onboarding
+"Publicar",lib/features/auth/screens/onboarding_screen.dart,Opción publicar onboarding
+"Comparte lo que ya no necesitas con otros",lib/features/auth/screens/onboarding_screen.dart,Descripción publicar onboarding
+"¡Hola, Nómada!",lib/features/auth/widgets/onboarding_dialog.dart,Título diálogo onboarding
+"Dale una segunda vida a tus cosas",lib/features/auth/widgets/onboarding_dialog.dart,Subtítulo diálogo onboarding
+"Explora a tu alrededor",lib/features/auth/widgets/onboarding_dialog.dart,Característica explorar
+"Descubre cosas geniales cerca de ti",lib/features/auth/widgets/onboarding_dialog.dart,Descripción explorar
+"Publica tu primer item",lib/features/auth/widgets/onboarding_dialog.dart,Característica publicar
+"Comparte lo que ya no necesitas",lib/features/auth/widgets/onboarding_dialog.dart,Descripción publicar
+"¿Qué quieres hacer?",lib/features/auth/widgets/onboarding_dialog.dart,Pregunta acciones
+"Explorar",lib/features/auth/widgets/onboarding_dialog.dart,Botón explorar
+"Publicar mi primer item",lib/features/auth/widgets/onboarding_dialog.dart,Botón publicar
+"Tal vez después",lib/features/auth/widgets/onboarding_dialog.dart,Botón saltar
 "Inicio",lib/features/home/screens/home_screen.dart,Título pantalla inicio
 "Perfil",lib/features/home/screens/home_screen.dart,Menú opción perfil
 "Mis artículos",lib/features/home/screens/home_screen.dart,Menú opción artículos
@@ -57,21 +78,18 @@ Texto,Ubicación,Contexto
 "Para mostrarte artículos cerca de ti y conectar con nómadas locales, necesitamos acceso a tu ubicación.",lib/features/profile/screens/location_permission_screen.dart,Descripción permiso ubicación
 "Tu privacidad es importante",lib/features/profile/screens/location_permission_screen.dart,Título privacidad
 "📍 Ubicación aproximada",lib/features/profile/screens/location_permission_screen.dart,Punto privacidad 1
-"Solo guardamos una ubicación redondeada (aproximadamente 50m de precisión)",lib/features/profile/screens/location_permission_screen.dart,Descripción privacidad 1
-"🕒 Sin historial",lib/features/profile/screens/location_permission_screen.dart,Punto privacidad 2
-"No guardamos un historial de tus ubicaciones, solo la última posición",lib/features/profile/screens/location_permission_screen.dart,Descripción privacidad 2
-"🔒 Sin historial",lib/features/profile/screens/location_permission_screen.dart,Punto privacidad 3
-"No guardamos historial de ubicaciones, solo la última posición",lib/features/profile/screens/location_permission_screen.dart,Descripción privacidad 3
+"Solo guardamos ubicación redondeada (~50m de precisión)",lib/features/profile/screens/location_permission_screen.dart,Descripción privacidad 1
+"🔒 Sin historial",lib/features/profile/screens/location_permission_screen.dart,Punto privacidad 2
+"No guardamos historial de ubicaciones, solo la última posición",lib/features/profile/screens/location_permission_screen.dart,Descripción privacidad 2
 "Permitir ubicación",lib/features/profile/screens/location_permission_screen.dart,Botón permitir ubicación
 "Saltar por ahora",lib/features/profile/screens/location_permission_screen.dart,Botón saltar
 "Ver detalles de privacidad",lib/features/profile/screens/location_permission_screen.dart,Botón ver privacidad
-"Ocultar detalles de privacidad",lib/features/profile/screens/location_permission_screen.dart,Botón ocultar privacidad
+"Ocultar detalles",lib/features/profile/screens/location_permission_screen.dart,Botón ocultar privacidad
 "Permiso denegado",lib/features/profile/screens/location_permission_screen.dart,Título diálogo permiso denegado
 "El permiso de ubicación fue denegado permanentemente. Para usar ReNomada con ubicación, ve a configuración de la aplicación y habilita el permiso de ubicación.",lib/features/profile/screens/location_permission_screen.dart,Mensaje permiso denegado
 "Cancelar",lib/features/profile/screens/location_permission_screen.dart,Botón cancelar diálogo
 "Ir a configuración",lib/features/profile/screens/location_permission_screen.dart,Botón ir a configuración
 "Toca para cambiar foto",lib/features/profile/screens/profile_screen.dart,Texto cambiar foto
-"Información del Perfil",lib/features/profile/screens/profile_screen.dart,Título sección perfil
 "Nombre de usuario",lib/features/profile/screens/profile_screen.dart,Label campo usuario
 "Ingresa tu nombre de usuario",lib/features/profile/screens/profile_screen.dart,Placeholder usuario
 "Ingresa un nombre de usuario",lib/features/profile/screens/profile_screen.dart,Error validación usuario
@@ -86,6 +104,7 @@ Texto,Ubicación,Contexto
 "Avatar actualizado correctamente",lib/features/profile/screens/profile_screen.dart,Mensaje éxito avatar
 "Error al subir avatar: {error}",lib/features/profile/screens/profile_screen.dart,Mensaje error avatar
 "Perfil actualizado correctamente",lib/features/profile/screens/profile_screen.dart,Mensaje éxito perfil
+"Error al cerrar sesión: {error}",lib/features/profile/screens/profile_screen.dart,Error cerrar sesión
 "Radio de búsqueda",lib/shared/widgets/radius_selector.dart,Título selector radio
 "{radius} km",lib/shared/widgets/radius_selector.dart,Label radio seleccionado
 "Permisos de Ubicación Requeridos",lib/features/feed/screens/feed_screen.dart,Título permisos requeridos
@@ -99,19 +118,12 @@ Texto,Ubicación,Contexto
 "¡Lo quiero!",lib/shared/widgets/feed_item_card.dart,Overlay swipe derecha
 "No gracias",lib/shared/widgets/feed_item_card.dart,Overlay swipe izquierda
 "{distance} km de distancia",lib/shared/widgets/feed_item_card.dart,Texto distancia
+"Usuario",lib/shared/widgets/feed_item_card.dart,Texto usuario por defecto
 "No hay artículos cerca",lib/features/feed/widgets/feed_empty_state.dart,Título feed vacío
-"No encontramos artículos dentro de {radius} km de tu ubicación.",lib/features/feed/widgets/feed_empty_state.dart,Descripción feed vacío
-"Prueba con un radio mayor",lib/features/feed/widgets/feed_empty_state.dart,Sugerencia radio mayor
-"{radius} km",lib/features/feed/widgets/feed_empty_state.dart,Opción radio
-"O puedes:",lib/features/feed/widgets/feed_empty_state.dart,Texto alternativas
-"Publicar",lib/features/feed/widgets/feed_empty_state.dart,Acción publicar
-"Actualizar",lib/features/feed/widgets/feed_empty_state.dart,Acción actualizar
-"Función de publicar próximamente",lib/features/feed/widgets/feed_empty_state.dart,Mensaje próximamente
-"Error al cargar el feed",lib/features/feed/widgets/feed_error_state.dart,Título error feed
-"No se pudo obtener tu ubicación. Verifica que tengas permisos de ubicación activados.",lib/features/feed/widgets/feed_error_state.dart,Error ubicación no disponible
-"Problema de conexión. Verifica tu internet e intenta nuevamente.",lib/features/feed/widgets/feed_error_state.dart,Error conexión
-"Algo salió mal. Intenta nuevamente en unos momentos.",lib/features/feed/widgets/feed_error_state.dart,Error genérico
-"Reintentar",lib/features/feed/widgets/feed_error_state.dart,Botón reintentar
+"¡La comunidad está creciendo! Vuelve pronto para descubrir nuevos artículos.",lib/features/feed/widgets/feed_empty_state.dart,Descripción feed vacío
+"Prueba con un radio mayor",lib/features/feed/widgets/feed_empty_state.dart,Título selector de radio
+"Publicar artículo",lib/features/feed/widgets/feed_empty_state.dart,Botón primary empty state feed
+"Actualizar",lib/features/feed/widgets/feed_empty_state.dart,Botón secondary empty state feed
 "Cargando tus artículos...",lib/features/items/screens/my_items_screen.dart,Mensaje cargando artículos
 "Error al cargar artículos",lib/features/items/screens/my_items_screen.dart,Título error artículos
 "Reintentar",lib/features/items/screens/my_items_screen.dart,Botón reintentar
@@ -146,6 +158,8 @@ Texto,Ubicación,Contexto
 "Describe tu artículo, su estado, por qué lo intercambias...",lib/features/items/widgets/create_item_bottom_sheet.dart,Placeholder descripción
 "Ingresa una descripción para tu artículo",lib/features/items/widgets/create_item_bottom_sheet.dart,Error validación descripción
 "La descripción debe tener al menos 10 caracteres",lib/features/items/widgets/create_item_bottom_sheet.dart,Error validación descripción longitud
+"Estado del artículo",lib/features/items/widgets/create_item_bottom_sheet.dart,Label selector condición
+"¿Qué quieres hacer?",lib/features/items/widgets/create_item_bottom_sheet.dart,Label selector tipo intercambio
 "Foto",lib/features/items/widgets/create_item_bottom_sheet.dart,Label sección foto
 "Agregar Foto",lib/features/items/widgets/create_item_bottom_sheet.dart,Botón agregar foto
 "Seleccionando...",lib/features/items/widgets/create_item_bottom_sheet.dart,Mensaje seleccionando foto
@@ -153,8 +167,13 @@ Texto,Ubicación,Contexto
 "Seleccionar de Galería",lib/features/items/widgets/create_item_bottom_sheet.dart,Opción seleccionar galería
 "Error al seleccionar imagen: {error}",lib/features/items/widgets/create_item_bottom_sheet.dart,Error seleccionar imagen
 "Cancelar",lib/features/items/widgets/create_item_bottom_sheet.dart,Botón cancelar
+"Creando...",lib/features/items/widgets/create_item_bottom_sheet.dart,Estado creando
 "Crear Artículo",lib/features/items/widgets/create_item_bottom_sheet.dart,Botón crear
 "¡Artículo creado exitosamente!",lib/features/items/widgets/create_item_bottom_sheet.dart,Mensaje éxito crear
+"Selección requerida",lib/features/items/widgets/create_item_bottom_sheet.dart,Título diálogo selección requerida
+"Selecciona el estado del artículo",lib/features/items/widgets/create_item_bottom_sheet.dart,Mensaje selección condición
+"Selecciona qué quieres hacer con el artículo",lib/features/items/widgets/create_item_bottom_sheet.dart,Mensaje selección intercambio
+"OK",lib/features/items/widgets/create_item_bottom_sheet.dart,Botón OK diálogo
 "Editar Artículo",lib/features/items/widgets/edit_item_bottom_sheet.dart,Título modal editar
 "Título",lib/features/items/widgets/edit_item_bottom_sheet.dart,Label campo título
 "Ej: Libro de cocina, Ropa vintage...",lib/features/items/widgets/edit_item_bottom_sheet.dart,Placeholder título
@@ -164,6 +183,8 @@ Texto,Ubicación,Contexto
 "Describe tu artículo, su estado, por qué lo intercambias...",lib/features/items/widgets/edit_item_bottom_sheet.dart,Placeholder descripción
 "Ingresa una descripción para tu artículo",lib/features/items/widgets/edit_item_bottom_sheet.dart,Error validación descripción
 "La descripción debe tener al menos 10 caracteres",lib/features/items/widgets/edit_item_bottom_sheet.dart,Error validación descripción longitud
+"Estado del artículo",lib/features/items/widgets/edit_item_bottom_sheet.dart,Label selector condición
+"¿Qué quieres hacer?",lib/features/items/widgets/edit_item_bottom_sheet.dart,Label selector tipo intercambio
 "Foto",lib/features/items/widgets/edit_item_bottom_sheet.dart,Label sección foto
 "Cambiar Foto",lib/features/items/widgets/edit_item_bottom_sheet.dart,Botón cambiar foto
 "Seleccionando...",lib/features/items/widgets/edit_item_bottom_sheet.dart,Mensaje seleccionando foto
@@ -171,6 +192,7 @@ Texto,Ubicación,Contexto
 "Seleccionar de Galería",lib/features/items/widgets/edit_item_bottom_sheet.dart,Opción seleccionar galería
 "Error al seleccionar imagen: {error}",lib/features/items/widgets/edit_item_bottom_sheet.dart,Error seleccionar imagen
 "Cancelar",lib/features/items/widgets/edit_item_bottom_sheet.dart,Botón cancelar
+"Guardando...",lib/features/items/widgets/edit_item_bottom_sheet.dart,Estado guardando
 "Guardar Cambios",lib/features/items/widgets/edit_item_bottom_sheet.dart,Botón guardar
 "Artículo actualizado correctamente",lib/features/items/widgets/edit_item_bottom_sheet.dart,Mensaje éxito actualizar
 "Error al actualizar: {error}",lib/features/items/widgets/edit_item_bottom_sheet.dart,Mensaje error actualizar
@@ -232,23 +254,4 @@ Texto,Ubicación,Contexto
 "Conceder permiso",lib/shared/widgets/error_widget.dart,Botón conceder permiso
 "Algo salió mal",lib/shared/widgets/error_widget.dart,Título error genérico
 "Ha ocurrido un error inesperado. Intenta nuevamente.",lib/shared/widgets/error_widget.dart,Descripción error genérico
-"¡Bienvenido a ReNomada!",lib/features/auth/screens/onboarding_screen.dart,Título pantalla onboarding
-"La comunidad de nómadas digitales donde compartir se vuelve fácil",lib/features/auth/screens/onboarding_screen.dart,Subtítulo pantalla onboarding
-"Como nómada digital, sabes que viajar ligero es clave. ReNomada te ayuda a conectar con otros nómadas en tu ciudad para intercambiar lo que ya no necesitas.",lib/features/auth/screens/onboarding_screen.dart,Descripción principal onboarding
-"Dos formas simples de empezar:",lib/features/auth/screens/onboarding_screen.dart,Título sección acciones
-"Explorar artículos",lib/features/auth/screens/onboarding_screen.dart,Botón explorar artículos
-"Publicar artículo",lib/features/auth/screens/onboarding_screen.dart,Botón publicar artículo
-
-// Empty States - Unified Component
-"Aún no tienes conversaciones",lib/features/chat/widgets/chat_empty_state.dart,Título empty state chats
-"Haz swipe en algunos items para empezar a chatear con otros usuarios",lib/features/chat/widgets/chat_empty_state.dart,Subtítulo empty state chats
-"Explorar items",lib/features/chat/widgets/chat_empty_state.dart,Botón primary empty state chats
-"Aún no tienes artículos",lib/features/items/screens/my_items_screen.dart,Título empty state mis items
-"Crea tu primer artículo para empezar a intercambiar con otros nómadas",lib/features/items/screens/my_items_screen.dart,Subtítulo empty state mis items
-"Crear Primer Artículo",lib/features/items/screens/my_items_screen.dart,Botón primary empty state mis items
-"No hay artículos cerca",lib/features/feed/widgets/feed_empty_state.dart,Título empty state feed
-"No encontramos artículos dentro de X km de tu ubicación.",lib/features/feed/widgets/feed_empty_state.dart,Subtítulo empty state feed (X es variable)
-"Prueba con un radio mayor",lib/features/feed/widgets/feed_empty_state.dart,Título selector de radio
-"Publicar artículo",lib/features/feed/widgets/feed_empty_state.dart,Botón primary empty state feed
-"Actualizar",lib/features/feed/widgets/feed_empty_state.dart,Botón secondary empty state feed
 

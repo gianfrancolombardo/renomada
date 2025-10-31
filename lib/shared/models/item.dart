@@ -1,8 +1,21 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 enum ItemStatus {
   available,
   exchanged,
   paused,
+}
+
+enum ItemCondition {
+  likeNew,
+  used,
+  needsRepair,
+}
+
+enum ExchangeType {
+  gift,
+  exchange,
 }
 
 class Item {
@@ -11,6 +24,8 @@ class Item {
   final String title;
   final String? description;
   final ItemStatus status;
+  final ItemCondition condition;
+  final ExchangeType exchangeType;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -20,6 +35,8 @@ class Item {
     required this.title,
     this.description,
     this.status = ItemStatus.available,
+    this.condition = ItemCondition.used,
+    this.exchangeType = ExchangeType.exchange,
     required this.createdAt,
     this.updatedAt,
   });
@@ -35,6 +52,8 @@ class Item {
           (v) => v.name == (json['status'] ?? 'available'),
           orElse: () => ItemStatus.available,
         ),
+        condition: _parseCondition(json['condition'] as String?),
+        exchangeType: _parseExchangeType(json['exchange_type'] as String?),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: json['updated_at'] != null 
             ? DateTime.parse(json['updated_at'] as String)
@@ -48,6 +67,14 @@ class Item {
     }
   }
 
+  static ItemCondition _parseCondition(String? value) {
+    return parseItemCondition(value);
+  }
+
+  static ExchangeType _parseExchangeType(String? value) {
+    return parseExchangeType(value);
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -55,6 +82,8 @@ class Item {
       'title': title,
       'description': description,
       'status': status.name,
+      'condition': itemConditionToString(condition),
+      'exchange_type': exchangeTypeToString(exchangeType),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -66,6 +95,8 @@ class Item {
     String? title,
     String? description,
     ItemStatus? status,
+    ItemCondition? condition,
+    ExchangeType? exchangeType,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -75,6 +106,8 @@ class Item {
       title: title ?? this.title,
       description: description ?? this.description,
       status: status ?? this.status,
+      condition: condition ?? this.condition,
+      exchangeType: exchangeType ?? this.exchangeType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -91,6 +124,8 @@ class Item {
         other.title == title &&
         other.description == description &&
         other.status == status &&
+        other.condition == condition &&
+        other.exchangeType == exchangeType &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -103,6 +138,8 @@ class Item {
       title,
       description,
       status,
+      condition,
+      exchangeType,
       createdAt,
       updatedAt,
     );
@@ -110,6 +147,114 @@ class Item {
 
   @override
   String toString() {
-    return 'Item(id: $id, ownerId: $ownerId, title: $title, description: $description, status: $status, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Item(id: $id, ownerId: $ownerId, title: $title, description: $description, status: $status, condition: $condition, exchangeType: $exchangeType, createdAt: $createdAt, updatedAt: $updatedAt)';
+  }
+}
+
+// Extension methods for UI labels in Spanish
+extension ItemConditionExtension on ItemCondition {
+  String get label {
+    switch (this) {
+      case ItemCondition.likeNew:
+        return 'Nuevo';
+      case ItemCondition.used:
+        return 'Usado';
+      case ItemCondition.needsRepair:
+        return 'A reparar';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case ItemCondition.likeNew:
+        return '✨';
+      case ItemCondition.used:
+        return '📦';
+      case ItemCondition.needsRepair:
+        return '🔧';
+    }
+  }
+
+  IconData get iconData {
+    switch (this) {
+      case ItemCondition.likeNew:
+        return LucideIcons.sparkles;
+      case ItemCondition.used:
+        return LucideIcons.package;
+      case ItemCondition.needsRepair:
+        return LucideIcons.wrench;
+    }
+  }
+}
+
+extension ExchangeTypeExtension on ExchangeType {
+  String get label {
+    switch (this) {
+      case ExchangeType.gift:
+        return 'Regalar';
+      case ExchangeType.exchange:
+        return 'Intercambiar';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case ExchangeType.gift:
+        return '🎁';
+      case ExchangeType.exchange:
+        return '🔄';
+    }
+  }
+
+  IconData get iconData {
+    switch (this) {
+      case ExchangeType.gift:
+        return LucideIcons.gift;
+      case ExchangeType.exchange:
+        return LucideIcons.refreshCw;
+    }
+  }
+}
+
+// Helper functions for parsing and converting enums
+ItemCondition parseItemCondition(String? value) {
+  switch (value) {
+    case 'like_new':
+      return ItemCondition.likeNew;
+    case 'needs_repair':
+      return ItemCondition.needsRepair;
+    case 'used':
+    default:
+      return ItemCondition.used;
+  }
+}
+
+ExchangeType parseExchangeType(String? value) {
+  switch (value) {
+    case 'gift':
+      return ExchangeType.gift;
+    case 'exchange':
+    default:
+      return ExchangeType.exchange;
+  }
+}
+
+String itemConditionToString(ItemCondition condition) {
+  switch (condition) {
+    case ItemCondition.likeNew:
+      return 'like_new';
+    case ItemCondition.used:
+      return 'used';
+    case ItemCondition.needsRepair:
+      return 'needs_repair';
+  }
+}
+
+String exchangeTypeToString(ExchangeType type) {
+  switch (type) {
+    case ExchangeType.gift:
+      return 'gift';
+    case ExchangeType.exchange:
+      return 'exchange';
   }
 }

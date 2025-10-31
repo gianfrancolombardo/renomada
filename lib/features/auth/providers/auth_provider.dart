@@ -83,7 +83,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> signUp({
     required String email,
     required String password,
-    String? username,
   }) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
@@ -91,7 +90,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final response = await _authService.signUp(
         email: email,
         password: password,
-        username: username,
       );
 
       if (response.user != null) {
@@ -101,7 +99,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           error: null,
         );
         
-        // Load the newly created profile
+        // Load the newly created profile (username auto-generated from email)
         try {
           await _loadProfile();
         } catch (e) {
@@ -207,6 +205,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         error: _getErrorMessage(e.toString()),
+      );
+      return false;
+    }
+  }
+
+  // Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      
+      final success = await _authService.signInWithProvider(OAuthProvider.google);
+      
+      if (success) {
+        // The auth state listener will handle the rest
+        return true;
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Error al iniciar sesión con Google',
+        );
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Error al iniciar sesión con Google',
       );
       return false;
     }

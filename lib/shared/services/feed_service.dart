@@ -2,11 +2,15 @@ import '../../../core/config/supabase_config.dart';
 import '../models/item.dart';
 import '../models/user_profile.dart';
 import '../../features/feed/providers/feed_provider.dart';
+import 'signed_url_cache.dart';
 
 class FeedService {
   static final FeedService _instance = FeedService._internal();
   factory FeedService() => _instance;
   FeedService._internal();
+
+  // Use getter to ensure proper initialization (fixes Flutter Web issues)
+  SignedUrlCache get _urlCache => SignedUrlCache();
 
   // Feed item with owner information
   static FeedItem _createFeedItem(Map<String, dynamic> row) {
@@ -48,7 +52,7 @@ class FeedService {
   Future<List<FeedItem>> getFeedItems({
     required double radiusKm,
     int page = 0,
-    int limit = 20,
+    int limit = 10,  // ✨ Changed: Default 10 instead of 20 for better performance
   }) async {
     try {
       print('🔍 [FeedService] Starting feed items fetch with radius: ${radiusKm}km, page: $page');
@@ -78,26 +82,64 @@ class FeedService {
 
       final feedItems = <FeedItem>[];
 
-      for (final row in response as List) {
+      // ✨ OPTIMIZATION: Collect all paths for batch processing
+      final List<String> photoPaths = [];
+      final List<String> avatarPaths = [];
+      
+      final responseList = response is List ? response : (response != null ? [response] : []);
+      
+      for (final row in responseList) {
+        if (row is! Map) continue;
+        
+        // Collect photo paths
+        final photoPath = row['first_photo_path'];
+        if (photoPath != null && photoPath is String && photoPath.isNotEmpty) {
+          photoPaths.add(photoPath);
+        }
+        
+        // Collect avatar paths (only for storage paths, not external URLs)
+        final avatarPath = row['owner_avatar_url'];
+        if (avatarPath != null && avatarPath is String && _isStoragePath(avatarPath)) {
+          avatarPaths.add(avatarPath);
+        }
+      }
+
+      // ✨ OPTIMIZATION: Batch process signed URLs
+      final Map<String, String> photoUrls = await _getBatchSignedUrls(photoPaths, 'item-photos');
+      final Map<String, String> avatarUrls = await _getBatchSignedUrls(avatarPaths, 'avatars');
+
+      // Process items
+      for (final row in responseList) {
         try {
-          print('🔄 [FeedService] Processing item: ${row['item_title'] ?? 'Unknown'}');
-          
-          // Get signed URL for first photo if exists
-          String? firstPhotoUrl;
-          if (row['first_photo_path'] != null) {
-            print('📸 [FeedService] Getting signed URL for photo: ${row['first_photo_path']}');
-            try {
-              firstPhotoUrl = await SupabaseConfig.storage
-                  .from('item-photos')
-                  .createSignedUrl(row['first_photo_path'], 3600);
-              print('✅ [FeedService] Photo URL created successfully');
-            } catch (e) {
-              print('⚠️ [FeedService] Photo not found in storage: ${row['first_photo_path']}');
-              firstPhotoUrl = null; // Continue without photo
-            }
+          if (row is! Map) {
+            print('⚠️ [FeedService] Invalid row format: $row');
+            continue;
           }
 
-          final feedItem = _createFeedItem(row);
+          print('🔄 [FeedService] Processing item: ${row['item_title'] ?? 'Unknown'}');
+          
+          // ✨ OPTIMIZATION: Get signed URLs from batch processing
+          String? firstPhotoUrl;
+          final photoPath = row['first_photo_path'];
+          if (photoPath != null && photoPath is String && photoPath.isNotEmpty) {
+            firstPhotoUrl = photoUrls[photoPath];
+          }
+
+          // ✨ OPTIMIZATION: Get avatar URL from batch processing or use external URL directly
+          String? ownerAvatarUrl = row['owner_avatar_url'] as String?;
+          if (ownerAvatarUrl != null) {
+            if (_isStoragePath(ownerAvatarUrl)) {
+              // It's a storage path, get signed URL from batch
+              ownerAvatarUrl = avatarUrls[ownerAvatarUrl];
+            }
+            // If it's an external URL (dicebear.com, etc.), use it directly
+          }
+
+          // Update row with signed avatar URL before creating feed item
+          final updatedRow = Map<String, dynamic>.from(row);
+          updatedRow['owner_avatar_url'] = ownerAvatarUrl;
+
+          final feedItem = _createFeedItem(updatedRow);
           feedItem.firstPhotoUrl = firstPhotoUrl;
 
           feedItems.add(feedItem);
@@ -116,6 +158,47 @@ class FeedService {
       print('🔍 [FeedService] Error type: ${e.runtimeType}');
       throw Exception('Error al cargar el feed: $e');
     }
+  }
+
+  /// ✨ OPTIMIZATION: Batch process signed URLs to reduce API calls
+  Future<Map<String, String>> _getBatchSignedUrls(List<String> paths, String bucket) async {
+    final Map<String, String> urlMap = {};
+    
+    if (paths.isEmpty) return urlMap;
+    
+    print('🔄 [FeedService] Processing ${paths.length} signed URLs for $bucket');
+    
+    // Process in batches of 5 to avoid rate limits
+    for (int i = 0; i < paths.length; i += 5) {
+      final batch = paths.skip(i).take(5).toList();
+      
+      final futures = batch.map((path) async {
+        // Check cache first
+        final cachedUrl = _urlCache.getCachedUrl(path);
+        if (cachedUrl != null) {
+          return MapEntry(path, cachedUrl);
+        }
+        
+        try {
+          final url = await SupabaseConfig.storage
+              .from(bucket)
+              .createSignedUrl(path, 3600);
+          
+          // Cache the URL
+          _urlCache.cacheUrl(path, url, 3600);
+          return MapEntry(path, url);
+        } catch (e) {
+          print('⚠️ [FeedService] Failed to get signed URL for $path: $e');
+          return MapEntry(path, '');
+        }
+      });
+      
+      final results = await Future.wait(futures);
+      urlMap.addAll(Map.fromEntries(results));
+    }
+    
+    print('✅ [FeedService] Generated ${urlMap.length} signed URLs');
+    return urlMap;
   }
 
 
@@ -235,5 +318,21 @@ class FeedService {
       print('❌ [FeedService] Error creating chat: $e');
       throw Exception('Error al crear el chat: $e');
     }
+  }
+
+  /// Check if avatar URL is a storage path (not external URL)
+  bool _isStoragePath(String avatarUrl) {
+    // External URLs start with http/https and are not from Supabase storage
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      // Check if it's a Supabase storage URL
+      if (avatarUrl.contains('supabase.co') || avatarUrl.contains('supabase.storage')) {
+        // It's a Supabase storage URL, extract path
+        return false; // Will be handled separately if needed
+      }
+      // It's an external URL (dicebear, ui-avatars, etc.)
+      return false;
+    }
+    // It's a storage path (e.g., "avatars/userId/file.png")
+    return true;
   }
 }

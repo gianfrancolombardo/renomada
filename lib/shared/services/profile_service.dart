@@ -143,13 +143,9 @@ class ProfileService {
           .from('avatars')
           .uploadBinary(fullPath, fileBytes);
 
-      // Get signed URL for the uploaded file (bucket is private)
-      final url = await SupabaseConfig.storage
-          .from('avatars')
-          .createSignedUrl(fullPath, 3600); // 1 hour expiration
-
-      print('Avatar uploaded successfully: $url');
-      return url;
+      // Return only the path (not a signed URL) to avoid storing expiring URLs in the database
+      print('Avatar uploaded successfully to path: $fullPath');
+      return fullPath;
     } catch (e) {
       print('Storage upload error: $e');
       throw Exception('Error al subir el archivo: $e');
@@ -198,26 +194,38 @@ class ProfileService {
         return avatarUrl; // Return as-is for external URLs
       }
       
-      // Extract file path from the stored URL
-      // URL format: https://project.supabase.co/storage/v1/object/sign/avatars/path/file.ext?token=...
-      final uri = Uri.parse(avatarUrl);
-      final pathSegments = uri.pathSegments;
+      String filePath;
       
-      // Find the path after 'avatars' bucket
-      final avatarsIndex = pathSegments.indexOf('avatars');
-      if (avatarsIndex == -1 || avatarsIndex + 1 >= pathSegments.length) {
-        print('Invalid avatar URL format: $avatarUrl');
-        return null;
+      // Check if it's a simple path or a full URL
+      if (!avatarUrl.startsWith('http')) {
+        // It's already a path (e.g., "avatars/userId/file.png")
+        // Use it directly - don't remove the "avatars" prefix
+        filePath = avatarUrl;
+        print('Using stored path directly: $filePath');
+      } else {
+        // It's a full URL - extract the path from it
+        // URL format: https://project.supabase.co/storage/v1/object/sign/avatars/avatars/userId/file.ext?token=...
+        final uri = Uri.parse(avatarUrl);
+        final pathSegments = uri.pathSegments;
+        
+        // Find the path after 'avatars' bucket
+        final avatarsIndex = pathSegments.indexOf('avatars');
+        if (avatarsIndex == -1 || avatarsIndex + 1 >= pathSegments.length) {
+          print('Invalid avatar URL format: $avatarUrl');
+          return null;
+        }
+        
+        // Reconstruct the file path (including the "avatars" prefix if present)
+        filePath = pathSegments.sublist(avatarsIndex + 1).join('/');
+        print('Extracted path from URL: $filePath');
       }
-      
-      // Reconstruct the file path
-      final filePath = pathSegments.sublist(avatarsIndex + 1).join('/');
       
       // Get signed URL
       final signedUrl = await SupabaseConfig.storage
           .from('avatars')
           .createSignedUrl(filePath, 3600); // 1 hour expiration
       
+      print('Generated signed URL for path: $filePath');
       return signedUrl;
     } catch (e) {
       print('Error getting signed URL for avatar: $e');

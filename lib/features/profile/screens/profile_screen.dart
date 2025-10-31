@@ -4,10 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/avatar_image.dart';
 import '../../../shared/services/auth_service.dart';
+import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -44,6 +44,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _handleLogout() async {
     try {
+      // Clear profile state and form before logging out
+      ref.read(profileProvider.notifier).clearProfile();
+      _usernameController.clear();
+      
       final authService = AuthService();
       await authService.signOut();
       
@@ -52,12 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al cerrar sesión: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Error al cerrar sesión: $e');
       }
     }
   }
@@ -88,7 +87,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // Save button
             _buildSaveButton(isLoading),
             
-            SizedBox(height: 48.h),
+            SizedBox(height: 32.h),
+            
+            // Divider before logout section
+            Divider(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              thickness: 1,
+            ),
+            
+            SizedBox(height: 32.h),
             
             // Logout text - centered at bottom
             TextButton(
@@ -113,39 +120,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildAvatarSection(profileState) {
     return Column(
       children: [
-        // Avatar - clean and minimal
+        // Avatar without gradient background
         GestureDetector(
           onTap: _showAvatarOptions,
           child: Stack(
             children: [
               AvatarImage(
                 avatarUrl: profileState.profile?.avatarUrl,
-                radius: 80.r,
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+                radius: 72.r,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 placeholder: Icon(
                   LucideIcons.user,
-                  size: 80.sp,
+                  size: 72.sp,
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: 0.w,
+                right: 0.w,
                 child: Container(
-                  width: 32.w,
-                  height: 32.w,
+                  width: 36.w,
+                  height: 36.w,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Theme.of(context).colorScheme.surface,
-                      width: 2,
+                      width: 3,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).colorScheme.tertiary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Icon(
                     LucideIcons.camera,
-                    size: 16.sp,
-                    color: Theme.of(context).colorScheme.onPrimary,
+                    size: 18.sp,
+                    color: Theme.of(context).colorScheme.onTertiaryContainer,
                   ),
                 ),
               ),
@@ -153,14 +167,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         
-        SizedBox(height: 16.h),
+        SizedBox(height: 24.h),
         
-        // Simple avatar label
+        
+        
+        // Avatar label with modern styling
         Text(
           'Toca para cambiar foto',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -173,20 +189,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Simple section title
-          Text(
-            'Información del Perfil',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          
-          SizedBox(height: 32.h),
           
           // Username field label
           Text(
-            'Nombre de usuario',
+            'Tu nombre',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w500,
               color: Theme.of(context).colorScheme.onSurface,
@@ -199,7 +205,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           TextFormField(
             controller: _usernameController,
             decoration: InputDecoration(
-              hintText: 'Ingresa tu nombre de usuario',
+              hintText: 'Cómo quieres que te llamen',
               prefixIcon: Icon(
                 LucideIcons.user,
                 size: 20.sp,
@@ -267,7 +273,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
-                  'Este nombre será visible para otros usuarios',
+                  'Este nombre será visible para otros nómadas',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.3,
@@ -311,7 +317,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   SizedBox(width: 8.w),
                   Text(
-                    'Guardar Cambios',
+                    'Guardar',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onPrimary,
@@ -352,7 +358,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
                 child: Text(
-                  'Cambiar foto de perfil',
+                  'Cambiar foto',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.onSurface,
@@ -477,13 +483,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (image != null) {
         // Show loading indicator
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Subiendo avatar...'),
-              backgroundColor: AppTheme.primaryColor,
-              duration: Duration(seconds: 2),
-            ),
-          );
+          SnackbarUtils.showInfo(context, 'Subiendo avatar...');
         }
 
         // Read file bytes directly instead of using path
@@ -491,23 +491,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final success = await ref.read(profileProvider.notifier).updateAvatarFromBytes(fileBytes, image.name);
         
         if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Avatar actualizado correctamente'),
-              backgroundColor: AppTheme.successColor,
-            ),
-          );
+          SnackbarUtils.showSuccess(context, 'Avatar actualizado correctamente');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al subir avatar: ${e.toString()}'),
-            backgroundColor: AppTheme.errorColor,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        SnackbarUtils.showError(context, 'Error al subir avatar: ${e.toString()}');
       }
     }
   }
@@ -520,12 +509,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Perfil actualizado correctamente'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
+      SnackbarUtils.showSuccess(context, 'Perfil actualizado correctamente');
       
       // Go back to previous screen
       context.pop();

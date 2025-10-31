@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/models/chat_with_details.dart';
-import '../../../shared/models/chat.dart';
+import '../../../shared/widgets/avatar_image.dart';
 
 class ChatHeader extends StatelessWidget {
   final ChatWithDetails chat;
@@ -17,29 +17,14 @@ class ChatHeader extends StatelessWidget {
 
     return Row(
       children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: colorScheme.primaryContainer,
-          backgroundImage: chat.otherUser.avatarUrl != null
-              ? NetworkImage(chat.otherUser.avatarUrl!)
-              : null,
-          child: chat.otherUser.avatarUrl == null
-              ? Text(
-                  chat.otherUser.username?.substring(0, 1).toUpperCase() ?? '?',
-                  style: TextStyle(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              : null,
-        ),
+        _buildAvatar(context, colorScheme),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                chat.otherUser.username ?? 'Usuario',
+                chat.otherUser.username ?? 'Nómada',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -87,119 +72,22 @@ class ChatHeader extends StatelessWidget {
     );
   }
 
-  String _getStatusText() {
-    switch (chat.chat.status) {
-      case ChatStatus.coordinating:
-        return 'Coordinando entrega';
-      case ChatStatus.deliveryCoordinated:
-        return 'Entrega coordinada';
-      case ChatStatus.deliveryCompleted:
-        return 'Entrega completada';
-    }
-  }
+  Widget _buildAvatar(BuildContext context, ColorScheme colorScheme) {
+    final username = chat.otherUser.username ?? 'Nómada';
+    final initial = username.substring(0, 1).toUpperCase();
 
-  Color _getStatusColor(ColorScheme colorScheme) {
-    switch (chat.chat.status) {
-      case ChatStatus.coordinating:
-        return colorScheme.outline;
-      case ChatStatus.deliveryCoordinated:
-        return colorScheme.primary;
-      case ChatStatus.deliveryCompleted:
-        return colorScheme.secondary;
-    }
-  }
-
-  void _handleMenuAction(BuildContext context, String action) {
-    switch (action) {
-      case 'status':
-        _showStatusDialog(context);
-        break;
-      case 'report':
-        _showReportDialog(context);
-        break;
-    }
-  }
-
-  void _showStatusDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cambiar estado'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Coordinando entrega'),
-              leading: Radio<ChatStatus>(
-                value: ChatStatus.coordinating,
-                groupValue: chat.chat.status,
-                onChanged: (value) {
-                  Navigator.of(context).pop();
-                  // TODO: Update chat status
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Entrega coordinada'),
-              leading: Radio<ChatStatus>(
-                value: ChatStatus.deliveryCoordinated,
-                groupValue: chat.chat.status,
-                onChanged: (value) {
-                  Navigator.of(context).pop();
-                  // TODO: Update chat status
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Entrega completada'),
-              leading: Radio<ChatStatus>(
-                value: ChatStatus.deliveryCompleted,
-                groupValue: chat.chat.status,
-                onChanged: (value) {
-                  Navigator.of(context).pop();
-                  // TODO: Update chat status
-                },
-              ),
-            ),
-          ],
+    // ✨ OPTIMIZATION: Use AvatarImage widget which handles external URLs correctly
+    return AvatarImage(
+      avatarUrl: chat.otherUser.avatarUrl,
+      radius: 20,
+      backgroundColor: colorScheme.primaryContainer,
+      placeholder: Text(
+        initial,
+        style: TextStyle(
+          color: colorScheme.onPrimaryContainer,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showReportDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reportar usuario'),
-        content: const Text(
-          '¿Estás seguro de que quieres reportar a este usuario? '
-          'Esto ayudará a mantener la comunidad segura.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // TODO: Implement report functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Reporte enviado. Gracias por tu colaboración.'),
-                ),
-              );
-            },
-            child: const Text('Reportar'),
-          ),
-        ],
       ),
     );
   }

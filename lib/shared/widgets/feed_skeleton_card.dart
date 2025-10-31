@@ -88,18 +88,19 @@ class _FeedSkeletonCardState extends State<FeedSkeletonCard>
               left: 0,
               right: 0,
               child: Container(
-                height: 180.h,
+                height: 220.h, // Extended to match feed card
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.3),
-                      Colors.black.withOpacity(0.7),
-                      Colors.black.withOpacity(0.9),
+                      Colors.black.withOpacity(0.2),
+                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.85),
+                      Colors.black.withOpacity(0.95),
                     ],
-                    stops: const [0.0, 0.3, 0.7, 1.0],
+                    stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
                   ),
                 ),
               ),
@@ -198,6 +199,81 @@ class _FeedSkeletonCardState extends State<FeedSkeletonCard>
                           ),
                         );
                       },
+                    ),
+                    SizedBox(height: 12.h),
+                    // Badges skeleton
+                    Row(
+                      children: [
+                        AnimatedBuilder(
+                          animation: _animation,
+                          builder: (context, child) {
+                            return Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(_animation.value * 0.6),
+                                borderRadius: BorderRadius.circular(20.r), // Totalmente redondeado como el real
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 12.w,
+                                    height: 12.h,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(_animation.value * 0.7),
+                                      borderRadius: BorderRadius.circular(6.r),
+                                    ),
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Container(
+                                    width: 40.w,
+                                    height: 12.h,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(_animation.value * 0.7),
+                                      borderRadius: BorderRadius.circular(6.r),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(width: 8.w),
+                        AnimatedBuilder(
+                          animation: _animation,
+                          builder: (context, child) {
+                            return Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(_animation.value * 0.6),
+                                borderRadius: BorderRadius.circular(20.r), // Totalmente redondeado como el real
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 12.w,
+                                    height: 12.h,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(_animation.value * 0.7),
+                                      borderRadius: BorderRadius.circular(6.r),
+                                    ),
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Container(
+                                    width: 50.w,
+                                    height: 12.h,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(_animation.value * 0.7),
+                                      borderRadius: BorderRadius.circular(6.r),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

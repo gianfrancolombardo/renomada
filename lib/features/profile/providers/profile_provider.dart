@@ -136,6 +136,11 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   void clearError() {
     state = state.copyWith(error: null);
   }
+
+  // Clear profile (used when logging out)
+  void clearProfile() {
+    state = const ProfileState();
+  }
 }
 
 // Providers

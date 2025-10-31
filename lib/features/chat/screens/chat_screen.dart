@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/models/chat_with_details.dart';
+import '../../../shared/models/item.dart';
 import '../../../core/config/supabase_config.dart';
 import '../providers/chat_providers.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../items/providers/item_provider.dart';
+import '../../feed/providers/feed_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/chat_header.dart';
+import '../widgets/chat_item_card.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String chatId;
@@ -34,6 +38,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(messageProvider.notifier).loadMessages(widget.chatId);
+      // Mark messages as read when entering the chat
+      ref.read(messageProvider.notifier).markMessagesAsRead();
       // Load chat details if not provided (e.g., when navigating from like)
       if (widget.chat == null) {
         _loadChatDetails();
@@ -121,7 +127,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                         SizedBox(height: 16.h),
                         Text(
-                          'Cargando conversación...',
+                          'Cargando chat...',
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -262,7 +268,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             SizedBox(height: 24.h),
                             Text(
-                              'Inicia la conversación',
+                              'Inicia el chat',
                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: Theme.of(context).colorScheme.onBackground,
@@ -292,15 +298,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.all(20.w),
-                  itemCount: messageState.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messageState.messages[index];
-                    return MessageBubble(
-                      message: message,
-                      isFromCurrentUser: message.isFromUser(SupabaseConfig.currentUser?.id ?? ''),
-                      currentUserProfile: currentUserProfile,
-                    );
-                  },
+                  itemCount: messageState.messages.length + 1, // +1 for item card
+        itemBuilder: (context, index) {
+          // Show item card at the beginning
+          if (index == 0) {
+                      final chatDetails = widget.chat ?? _loadedChat;
+            if (chatDetails != null) {
+              return ChatItemCard(
+                chatDetails: chatDetails,
+                onStatusChanged: _onItemStatusChanged,
+                          onSendSystemMessage: _sendSystemMessage,
+              );
+            }
+            return const SizedBox.shrink();
+          }
+
+          // Show messages (adjust index by -1)
+          final message = messageState.messages[index - 1];
+          return MessageBubble(
+            message: message,
+            isFromCurrentUser: message.isFromUser(SupabaseConfig.currentUser?.id ?? ''),
+            currentUserProfile: currentUserProfile,
+          );
+        },
                 );
               },
             ),
@@ -308,10 +328,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Consumer(
             builder: (context, ref, child) {
               final messageState = ref.watch(messageProvider);
+              final chatDetails = widget.chat ?? _loadedChat;
+              final isItemExchanged = chatDetails?.item.status == ItemStatus.exchanged;
+              
               return ChatInput(
                 controller: _messageController,
-                onSend: _sendMessage,
+                onSend: isItemExchanged ? null : _sendMessage,
                 isLoading: messageState.isSending,
+                enabled: !isItemExchanged,
               );
             },
           ),
@@ -327,6 +351,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (message != null) {
         _messageController.clear();
         _scrollToBottom();
+        // Mark messages as read after sending (user is actively in the chat)
+        ref.read(messageProvider.notifier).markMessagesAsRead();
       }
     });
   }
@@ -342,4 +368,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
   }
+
+  void _onItemStatusChanged() {
+    // Reload chat details to reflect the updated item status
+    _loadChatDetails();
+    
+    // Also refresh the feed and user items to reflect changes
+    ref.read(userItemsProvider.notifier).loadUserItems();
+    ref.read(feedProvider.notifier).loadFeed();
+  }
+
+  Future<void> _sendSystemMessage(String message) async {
+    try {
+      await ref.read(messageProvider.notifier).sendMessage(message);
+      _scrollToBottom();
+    } catch (e) {
+      print('Error sending system message: $e');
+      // Don't show error to user for system messages
+    }
+  }
+
 }

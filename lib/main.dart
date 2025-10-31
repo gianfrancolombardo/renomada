@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/config/supabase_config.dart';
@@ -8,6 +9,12 @@ import 'shared/services/chat_realtime_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Force portrait orientation
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   
   // Initialize Supabase
   await SupabaseConfig.initialize();
@@ -19,7 +26,7 @@ void main() async {
   
   // Check if user is already authenticated and set initial route
   final isAuthenticated = SupabaseConfig.isAuthenticated;
-  final initialLocation = isAuthenticated ? '/feed' : '/login';
+  final initialLocation = isAuthenticated ? '/feed' : '/';
   
   runApp(
     ProviderScope(
@@ -28,13 +35,13 @@ void main() async {
   );
 }
 
-class RenomadaApp extends StatelessWidget {
+class RenomadaApp extends ConsumerWidget {
   final String initialLocation;
   
   const RenomadaApp({super.key, required this.initialLocation});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ScreenUtilInit(
       designSize: const Size(375, 812), // iPhone X design size
       minTextAdapt: true,
@@ -44,7 +51,9 @@ class RenomadaApp extends StatelessWidget {
           title: 'ReNomada',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
-          routerConfig: AppRouter.createRouter(initialLocation),
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.dark, // Modo oscuro por defecto
+          routerConfig: AppRouter.createRouter(initialLocation, ProviderScope.containerOf(context)),
         );
       },
     );

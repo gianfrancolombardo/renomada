@@ -1,0 +1,95 @@
+// Brand colors from the UI
+const BRAND = {
+    lilac: "#B7BEFE",   // primary
+    magenta: "#FF95DD", // secondary
+    lime: "#F6FF7F",    // tertiary
+    surface: "#1F1F1F",
+    surfaceVariant: "#313131",
+    textLight: "#F5F5F5",
+    outline: "#8A8A8A",
+  };
+  
+  // ----------------------
+  // Material 3 — DARK THEME
+  // ----------------------
+  export const md3DarkTheme = {
+    // Primary (Lilac)
+    primary: BRAND.lilac,
+    onPrimary: "#1F1F1F",
+    primaryContainer: "#4C57B6",
+    onPrimaryContainer: "#EEF0FF",
+  
+    // Secondary (Magenta)
+    secondary: BRAND.magenta,
+    onSecondary: "#1F1F1F",
+    secondaryContainer: "#7A3D66",
+    onSecondaryContainer: "#FFE7F6",
+  
+    // Tertiary (Lime)
+    tertiary: BRAND.lime,
+    onTertiary: "#1F1F1F",
+    tertiaryContainer: "#7E8538",
+    onTertiaryContainer: "#FDFFDE",
+  
+    // Error (keep MD3 default)
+    error: "#B3261E",
+    onError: "#FFFFFF",
+    errorContainer: "#8C1D18",
+    onErrorContainer: "#FFDAD6",
+  
+    // Surfaces / neutrals
+    background: BRAND.surface,
+    onBackground: BRAND.textLight,
+    surface: BRAND.surface,
+    onSurface: BRAND.textLight,
+    surfaceVariant: BRAND.surfaceVariant,
+    onSurfaceVariant: "#C8C8C8",
+    outline: BRAND.outline,
+    outlineVariant: "#5A5A5A",
+  
+    inverseSurface: "#F5F5F5",
+    inverseOnSurface: "#1F1F1F",
+    inversePrimary: "#8D96F8",
+  };
+  
+  // ----------------------
+  // Material 3 — LIGHT THEME
+  // (brand-consistent with dark)
+  // ----------------------
+  export const md3LightTheme = {
+    // Primary (Lilac compressed for contrast)
+    primary: "#5A66D0",
+    onPrimary: "#FFFFFF",
+    primaryContainer: "#E3E6FF",
+    onPrimaryContainer: "#1B2468",
+  
+    // Secondary (Magenta compressed for contrast)
+    secondary: "#C246A0",
+    onSecondary: "#FFFFFF",
+    secondaryContainer: "#FFD9F1",
+    onSecondaryContainer: "#4E0F3B",
+  
+    // Tertiary (Lime)
+    tertiary: "#779000",
+    onTertiary: "#FFFFFF",
+    tertiaryContainer: "#F2FFC2",
+    onTertiaryContainer: "#262E00",
+  
+    error: "#B3261E",
+    onError: "#FFFFFF",
+    errorContainer: "#FFDAD6",
+    onErrorContainer: "#410002",
+  
+    background: "#FFF7EE", // soft warm canvas to echo the mockup
+    onBackground: "#1F1F1F",
+    surface: "#FFFFFF",
+    onSurface: "#1F1F1F",
+    surfaceVariant: "#F2F2F2",
+    onSurfaceVariant: "#4D4D4D",
+    outline: "#8A8A8A",
+    outlineVariant: "#D3D3D3",
+  
+    inverseSurface: "#2B2B2B",
+    inverseOnSurface: "#F5F5F5",
+    inversePrimary: BRAND.lilac,
+  };

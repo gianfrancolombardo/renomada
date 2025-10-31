@@ -9,6 +9,7 @@ class ChatWithDetails {
   final UserProfile otherUser;
   final Message? lastMessage;
   final int unreadCount;
+  final String? firstPhotoUrl;
 
   const ChatWithDetails({
     required this.chat,
@@ -16,6 +17,7 @@ class ChatWithDetails {
     required this.otherUser,
     this.lastMessage,
     this.unreadCount = 0,
+    this.firstPhotoUrl,
   });
 
   factory ChatWithDetails.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class ChatWithDetails {
           ? Message.fromJson(json['last_message'] as Map<String, dynamic>)
           : null,
       unreadCount: json['unread_count'] as int? ?? 0,
+      firstPhotoUrl: json['first_photo_url'] as String?,
     );
   }
 
@@ -37,6 +40,7 @@ class ChatWithDetails {
       'other_user': otherUser.toJson(),
       'last_message': lastMessage?.toJson(),
       'unread_count': unreadCount,
+      'first_photo_url': firstPhotoUrl,
     };
   }
 
@@ -46,6 +50,7 @@ class ChatWithDetails {
     UserProfile? otherUser,
     Message? lastMessage,
     int? unreadCount,
+    String? firstPhotoUrl,
   }) {
     return ChatWithDetails(
       chat: chat ?? this.chat,
@@ -53,6 +58,7 @@ class ChatWithDetails {
       otherUser: otherUser ?? this.otherUser,
       lastMessage: lastMessage ?? this.lastMessage,
       unreadCount: unreadCount ?? this.unreadCount,
+      firstPhotoUrl: firstPhotoUrl ?? this.firstPhotoUrl,
     );
   }
 
@@ -64,7 +70,8 @@ class ChatWithDetails {
         other.item == item &&
         other.otherUser == otherUser &&
         other.lastMessage == lastMessage &&
-        other.unreadCount == unreadCount;
+        other.unreadCount == unreadCount &&
+        other.firstPhotoUrl == firstPhotoUrl;
   }
 
   @override
@@ -75,11 +82,12 @@ class ChatWithDetails {
       otherUser,
       lastMessage,
       unreadCount,
+      firstPhotoUrl,
     );
   }
 
   @override
   String toString() {
-    return 'ChatWithDetails(chat: $chat, item: $item, otherUser: $otherUser, lastMessage: $lastMessage, unreadCount: $unreadCount)';
+    return 'ChatWithDetails(chat: $chat, item: $item, otherUser: $otherUser, lastMessage: $lastMessage, unreadCount: $unreadCount, firstPhotoUrl: $firstPhotoUrl)';
   }
 }

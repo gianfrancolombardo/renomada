@@ -10,9 +10,9 @@ class ChatEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return UnifiedEmptyState(
       icon: LucideIcons.messageCircle,
-      title: 'Aún no tienes conversaciones',
-      subtitle: 'Haz swipe en algunos items para empezar a chatear con otros usuarios',
-      primaryButtonText: 'Explorar items',
+      title: 'Aún no tienes chats',
+      subtitle: 'Haz swipe en algunos objetos para empezar a chatear',
+      primaryButtonText: 'Explorar objetos',
       primaryButtonIcon: LucideIcons.compass,
       onPrimaryButtonPressed: () => context.go('/feed'),
     );

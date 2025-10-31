@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/message.dart';
 import '../../../shared/services/message_service.dart';
 import '../../../core/config/supabase_config.dart';
+import 'chat_providers.dart';
 
 class MessageProvider extends ChangeNotifier {
   final MessageService _messageService;
+  final Ref _ref;
   
-  MessageProvider(this._messageService);
+  MessageProvider(this._messageService, this._ref);
   
   List<Message> _messages = [];
   bool _isLoading = false;
@@ -105,6 +108,10 @@ class MessageProvider extends ChangeNotifier {
         chatId: _currentChatId!,
         userId: SupabaseConfig.currentUser?.id ?? '',
       );
+      
+      // Refresh chat list to update unread count
+      // This will trigger a rebuild of the chat list with updated unread counts
+      _ref.read(chatProvider.notifier).refreshChats();
     } catch (e) {
       // Don't show error for read status updates
       debugPrint('Failed to mark messages as read: $e');

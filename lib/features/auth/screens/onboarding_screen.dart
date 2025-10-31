@@ -52,7 +52,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               
               // Title
               Text(
-                '¡Bienvenido a ReNomada!',
+                '¡Hola! Esto es ReNomada',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.onBackground,
@@ -64,7 +64,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               
               // Description
               Text(
-                'Intercambia objetos con otros nómadas en tu ciudad',
+                'Cerca, útil y ahora.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
@@ -75,45 +75,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SizedBox(height: 48.h),
               
               // Main description
-              Container(
-                padding: EdgeInsets.all(24.w),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                    width: 1,
-                  ),
+              Text(
+                '¿Cómo quieres empezar?',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      '¿Cómo empezar?',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    
-                    SizedBox(height: 16.h),
-                    
-                    Text(
-                      'Explora objetos cercanos o publica lo que ya no necesitas',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+                textAlign: TextAlign.center,
               ),
               
-              SizedBox(height: 48.h),
+              SizedBox(height: 24.h),
               
-              // Action buttons
-              _buildActionButtons(),
+              // Action options
+              _buildActionOptions(),
             ],
           ),
         ),
@@ -122,63 +96,125 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
 
-  Widget _buildActionButtons() {
+  Widget _buildActionOptions() {
     return Column(
       children: [
-        // Explore button
-        SizedBox(
-          width: double.infinity,
-          height: 56.h,
-          child: ElevatedButton.icon(
-            onPressed: _handleExplore,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-            ),
-            icon: Icon(LucideIcons.search, size: 20.sp),
-            label: Text(
-              'Explorar artículos',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        // Explore option - Secondary theme
+        _buildOptionCard(
+          title: 'Explorar',
+          subtitle: 'Descubre objetos cerca de ti',
+          icon: LucideIcons.compass,
+          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+          iconColor: Theme.of(context).colorScheme.onSecondaryContainer,
+          textColor: Theme.of(context).colorScheme.onSecondaryContainer,
+          onTap: _handleExplore,
         ),
         
         SizedBox(height: 16.h),
         
-        // Publish button
-        SizedBox(
-          width: double.infinity,
-          height: 56.h,
-          child: OutlinedButton.icon(
-            onPressed: _handlePublish,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.primary,
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-            ),
-            icon: Icon(LucideIcons.plus, size: 20.sp),
-            label: Text(
-              'Publicar artículo',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        // Publish option - Tertiary theme
+        _buildOptionCard(
+          title: 'Publicar',
+          subtitle: 'Regala lo que no viaja contigo',
+          icon: LucideIcons.plusCircle,
+          backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+          iconColor: Theme.of(context).colorScheme.onTertiaryContainer,
+          textColor: Theme.of(context).colorScheme.onTertiaryContainer,
+          onTap: _handlePublish,
         ),
       ],
+    );
+  }
+
+  Widget _buildOptionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color iconColor,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(24.w),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [
+            BoxShadow(
+              color: backgroundColor.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon container
+            Container(
+              width: 60.w,
+              height: 60.w,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Icon(
+                icon,
+                size: 28.sp,
+                color: iconColor,
+              ),
+            ),
+            
+            SizedBox(width: 20.w),
+            
+            // Text content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      fontSize: 18.sp,
+                    ),
+                  ),
+                  
+                  SizedBox(height: 6.h),
+                  
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: textColor.withOpacity(0.8),
+                      height: 1.3,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Arrow icon
+            Container(
+              width: 32.w,
+              height: 32.w,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Icon(
+                LucideIcons.arrowRight,
+                size: 16.sp,
+                color: iconColor,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

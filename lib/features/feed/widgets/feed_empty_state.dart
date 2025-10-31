@@ -21,9 +21,9 @@ class FeedEmptyState extends StatelessWidget {
     return UnifiedEmptyState(
       icon: LucideIcons.searchX,
       title: 'No hay artículos cerca',
-      subtitle: 'No encontramos artículos dentro de ${selectedRadius.toInt()} km de tu ubicación.',
+      subtitle: '¡La comunidad está creciendo! Vuelve pronto para descubrir nuevos artículos.',
       customContent: _buildRadiusSelector(context),
-      primaryButtonText: 'Publicar artículo',
+      primaryButtonText: 'Publicar objeto',
       primaryButtonIcon: LucideIcons.plus,
       onPrimaryButtonPressed: () => context.go('/my-items'),
       secondaryButtonText: 'Actualizar',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/feed_provider.dart';
 import '../../../shared/widgets/avatar_image.dart';
+import '../../../shared/widgets/item_badges.dart';
 import '../../../shared/models/user_profile.dart';
 
 class FeedCard extends StatefulWidget {
@@ -175,10 +176,15 @@ class _FeedCardState extends State<FeedCard>
                                       child: Text(
                                         item.description!,
                                         style: Theme.of(context).textTheme.bodyMedium,
-                                        maxLines: 4,
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Item badges
+                                  ItemBadges(item: item),
                                   
                                   const Spacer(),
                                   

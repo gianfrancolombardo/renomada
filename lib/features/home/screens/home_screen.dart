@@ -358,7 +358,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'color': Theme.of(context).colorScheme.secondary,
       },
       {
-        'title': 'Conversaciones',
+        'title': 'Chats',
         'icon': Icons.chat_bubble_outline,
         'onTap': () => context.push('/chats'),
         'color': Theme.of(context).colorScheme.tertiary,

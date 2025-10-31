@@ -33,6 +33,7 @@ dependencies:
   # Utilities
   uuid: ^4.4.0
   intl: ^0.19.0
+  shimmer: ^3.0.0  # For skeleton loaders
   
   # Push notifications
   firebase_core: ^2.31.2
@@ -42,6 +43,37 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+  
+  # Assets
+  assets:
+    - assets/icon/
+    - assets/images/
+
+# Configuración de iconos de la app
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Icono principal (1024x1024 PNG)
+  image_path: "assets/icon/app_icon.png"
+  
+  # Configuración para iconos adaptativos de Android 8.0+
+  # Usa solo si tienes un icono foreground separado
+  adaptive_icon_background: "#313131"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  
+  # Iconos para web
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#313131"
+    theme_color: "#313131"
+  
+  # Iconos para Windows
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 48

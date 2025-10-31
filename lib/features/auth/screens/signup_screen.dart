@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_form_field.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -20,17 +21,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _usernameController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptTerms = false;
+  bool _isSigningUp = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _usernameController.dispose();
     super.dispose();
   }
 
@@ -39,60 +39,42 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     // Listen to auth changes
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error!),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        SnackbarUtils.showError(context, next.error!);
       }
       
       // Navigate to location permission screen after successful signup
+      // Only show success message if we initiated the signup from this screen
       if (next.user != null && previous?.user == null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Cuenta creada! Revisa tu email para confirmar'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
+        if (_isSigningUp) {
+          // Only show message if we're actually signing up, not logging in
+          // For Google Sign-In, check if profile already existed (existing user = login, not signup)
+          final isNewUser = previous?.profile == null;
+          if (isNewUser) {
+            SnackbarUtils.showSuccess(context, '¡Cuenta creada! Revisa tu email para confirmar');
+          }
+          _isSigningUp = false; // Reset flag
+        }
         context.pushReplacement('/location-permission');
       }
     });
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        title: const Text('Crear Cuenta'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            LucideIcons.chevronLeft,
-            color: Theme.of(context).colorScheme.onBackground,
-          ),
-          onPressed: () => context.pop(),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: 20.h),
+              SizedBox(height: 60.h),
               
               // Header
               _buildHeader(),
               
-              SizedBox(height: 40.h),
-              
-              // Sign up form
-              _buildSignUpForm(),
-              
               SizedBox(height: 32.h),
               
-              // Sign up button
-              _buildSignUpButton(),
+              // Sign up form with Google button
+              _buildSignUpForm(),
               
               SizedBox(height: 32.h),
               
@@ -110,30 +92,41 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        // Welcome icon
-        Container(
-          width: 80.w,
-          height: 80.w,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(24.r),
-            boxShadow: [
-              BoxShadow(
+        // Logo flat - consistente con empty states
+        Hero(
+          tag: 'app_logo',
+          child: Container(
+            width: 100.w,
+            height: 100.w,
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(28.r),
+              border: Border.all(
                 color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                width: 2,
               ),
-            ],
-          ),
-          child: Icon(
-            LucideIcons.userPlus,
-            size: 40.sp,
-            color: Theme.of(context).colorScheme.onPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16.r),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
         ),
         
-        SizedBox(height: 24.h),
+        SizedBox(height: 32.h),
         
+        // Título simple sin gradiente
         Text(
           'Únete a ReNomada',
           style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -143,13 +136,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           textAlign: TextAlign.center,
         ),
         
-        SizedBox(height: 12.h),
+        SizedBox(height: 16.h),
         
+        // Descripción
         Text(
-          'Comienza a intercambiar objetos con otros nómadas y forma parte de una comunidad sostenible',
+          'Únete para darle un respiro al planeta. Regala e intercambia historias cerca de ti.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
-            height: 1.4,
+            height: 1.5,
           ),
           textAlign: TextAlign.center,
         ),
@@ -161,7 +155,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     return Container(
       padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        color: Theme.of(context).colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
@@ -177,7 +171,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Información de Cuenta',
+              'Tu perfil nómada',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -185,28 +179,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             ),
             
             SizedBox(height: 24.h),
-            
-            // Username field
-            AuthFormField(
-              controller: _usernameController,
-              label: '',
-              hint: 'tu_usuario',
-              prefixIcon: LucideIcons.user,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ingresa un nombre de usuario';
-                }
-                if (value.length < 3) {
-                  return 'El nombre debe tener al menos 3 caracteres';
-                }
-                if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                  return 'Solo letras, números y guiones bajos';
-                }
-                return null;
-              },
-            ),
-            
-            SizedBox(height: 16.h),
             
             // Email field
             AuthFormField(
@@ -337,6 +309,84 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 ),
               ],
             ),
+            
+            SizedBox(height: 24.h),
+            
+            // Crear Cuenta button - acción principal
+            Consumer(
+              builder: (context, ref, child) {
+                final isLoading = ref.watch(authLoadingProvider);
+                return SizedBox(
+                  width: double.infinity,
+                  height: 56.h,
+                  child: ElevatedButton(
+                    onPressed: isLoading || !_acceptTerms ? null : _handleSignUp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      elevation: 0,
+                      shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const LoadingWidget(size: 24)
+                        : Text(
+                            'Comenzar',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                  ),
+                );
+              },
+            ),
+            
+            SizedBox(height: 24.h),
+            
+            // Divider with "o"
+            Row(
+              children: [
+                Expanded(
+                  child: Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    thickness: 1,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'o continúa con Google',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    thickness: 1,
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: 24.h),
+            
+            // Google sign in button - alternativa
+            Consumer(
+              builder: (context, ref, child) {
+                final isLoading = ref.watch(authLoadingProvider);
+                return GoogleSignInButton(
+                  onPressed: _handleGoogleSignIn,
+                  isLoading: isLoading,
+                  text: 'Continuar con Google',
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -344,59 +394,27 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
 
-  Widget _buildSignUpButton() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final isLoading = ref.watch(authLoadingProvider);
-        return SizedBox(
-          width: double.infinity,
-          height: 56.h,
-          child: ElevatedButton(
-            onPressed: isLoading || !_acceptTerms ? null : _handleSignUp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              elevation: 0,
-              shadowColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-            ),
-            child: isLoading
-                ? const LoadingWidget(size: 24)
-                : Text(
-                    'Crear Cuenta',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
-          ),
-        );
-      },
-    );
-  }
+
 
   Widget _buildLoginLink() {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: Theme.of(context).colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '¿Ya tienes cuenta? ',
+            '¿Ya formas parte? ',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           TextButton(
             onPressed: () {
-              context.pop();
+              context.push('/login');
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -405,7 +423,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               ),
             ),
             child: Text(
-              'Inicia sesión',
+              'Entrar',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.primary,
@@ -418,23 +436,27 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     );
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    // Check if this is a new user (signup) or existing user (login) by checking if profile exists
+    // For Google sign-in, we set the flag since it could be either signup or login
+    // But we'll only show the message if it's actually a new account
+    // Note: Google sign-in might create new accounts, so we'll let the auth state listener handle it
+    _isSigningUp = true; // Set flag for potential new account
+    await ref.read(authProvider.notifier).signInWithGoogle();
+  }
+
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes aceptar los términos y condiciones'),
-          backgroundColor: AppTheme.warningColor,
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Debes aceptar los términos y condiciones');
       return;
     }
 
+    _isSigningUp = true; // Set flag to indicate we're signing up
     await ref.read(authProvider.notifier).signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
-      username: _usernameController.text.trim(),
     );
   }
 }

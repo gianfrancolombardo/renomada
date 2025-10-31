@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_form_field.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -39,15 +40,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       print('  IsLoading: ${next.isLoading}');
       
       if (next.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.error!),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
+        SnackbarUtils.showError(context, next.error!);
       }
       
-      // Navigate to location permission screen after successful login
+      // Navigate to location permission screen after successful login (no success message)
       if (next.user != null && previous?.user == null && mounted) {
         print('Navigating to location permission screen');
         context.pushReplacement('/location-permission');
@@ -69,7 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               
               SizedBox(height: 56.h),
               
-              // Login form
+              // Login form with Google button
               _buildLoginForm(),
               
               SizedBox(height: 32.h),
@@ -93,33 +89,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        // App logo with solid background
-        Container(
-          width: 72.w,
-          height: 72.w,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(16.r),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+        // Logo flat - consistente con empty states
+        Hero(
+          tag: 'app_logo',
+          child: Container(
+            width: 100.w,
+            height: 100.w,
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(28.r),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                width: 2,
               ),
-            ],
-          ),
-          child: Icon(
-            LucideIcons.compass,
-            size: 32.sp,
-            color: Theme.of(context).colorScheme.onPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16.r),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
         ),
         
         SizedBox(height: 32.h),
         
-        // Title
+        // Título simple sin gradiente
         Text(
-          '¡Bienvenido de vuelta!',
+          '¡Hola de nuevo!',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w600,
             color: Theme.of(context).colorScheme.onBackground,
@@ -129,12 +135,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         
         SizedBox(height: 12.h),
         
-        // Subtitle
+        // Descripción
         Text(
-          'Inicia sesión para continuar tu aventura nómada',
+          'Continúa tu ruta hacia una vida más ligera',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
-            height: 1.4,
+            height: 1.5,
           ),
           textAlign: TextAlign.center,
         ),
@@ -146,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Container(
       padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        color: Theme.of(context).colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
@@ -162,7 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Iniciar Sesión',
+              'Entrar',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.onSurface,
@@ -195,7 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             AuthFormField(
               controller: _passwordController,
               label: '',
-              hint: 'Tu contraseña',
+              hint: 'Shhh... es un secreto',
               obscureText: _obscurePassword,
               prefixIcon: LucideIcons.lock,
               suffixIcon: IconButton(
@@ -243,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: isLoading
                         ? const LoadingWidget(size: 24)
                         : Text(
-                            'Iniciar Sesión',
+                            'Entrar',
                             style: TextStyle(
                               fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
@@ -251,6 +257,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                   ),
+                );
+              },
+            ),
+            
+            SizedBox(height: 24.h),
+            
+            // Divider with "o"
+            Row(
+              children: [
+                Expanded(
+                  child: Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    thickness: 1,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'o',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    thickness: 1,
+                  ),
+                ),
+              ],
+            ),
+            
+            SizedBox(height: 24.h),
+            
+            // Google sign in button - ahora dentro del formulario
+            Consumer(
+              builder: (context, ref, child) {
+                final isLoading = ref.watch(authLoadingProvider);
+                return GoogleSignInButton(
+                  onPressed: _handleGoogleSignIn,
+                  isLoading: isLoading,
                 );
               },
             ),
@@ -264,14 +312,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 24.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: Theme.of(context).colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '¿No tienes cuenta? ',
+            '¿Aún no formas parte? ',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -287,7 +335,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             child: Text(
-              'Regístrate aquí',
+              'Únete aquí',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.primary,
@@ -299,6 +347,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+
 
   Widget _buildForgotPassword() {
     return Center(
@@ -331,28 +380,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    await ref.read(authProvider.notifier).signInWithGoogle();
+  }
+
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa tu email primero'),
-          backgroundColor: AppTheme.warningColor,
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Ingresa tu email primero');
       return;
     }
 
     final success = await ref.read(authProvider.notifier).resetPassword(email);
     
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Revisa tu email para restablecer la contraseña'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
+      SnackbarUtils.showSuccess(context, 'Revisa tu email para restablecer la contraseña');
     }
   }
 }

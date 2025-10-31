@@ -978,7 +978,7 @@ class AppRouter {
 
 ```dart
 import 'package:flutter/material.dart';
-import 'core/router/app_router.dart';
+import '../features/core/router/app_router.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

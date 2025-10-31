@@ -66,7 +66,7 @@ class ChatsMainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      title: 'Conversaciones',
+      title: 'Chats',
       currentIndex: 2,
       child: const ChatListScreen(),
     );

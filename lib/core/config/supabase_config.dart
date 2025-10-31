@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../constants/supabase_constants.dart';
 
 class SupabaseConfig {
@@ -15,7 +16,10 @@ class SupabaseConfig {
     await Supabase.initialize(
       url: SupabaseConstants.supabaseUrl,
       anonKey: SupabaseConstants.supabaseAnonKey,
-      debug: true, // Remove in production
+      debug: kDebugMode, // Only enable debug in development
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     );
     
     _client = Supabase.instance.client;

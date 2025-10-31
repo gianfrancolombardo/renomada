@@ -201,7 +201,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final currentItem = feedState.items[safeIndex];
     
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 20.h),
+      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 24.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -209,23 +209,23 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           GestureDetector(
             onTap: () => _onSwipeLeft(currentItem.item.id),
             child: Container(
-              width: 64.w,
-              height: 64.w,
+              width: 56.w,
+              height: 56.w,
               decoration: BoxDecoration(
-                color: Colors.red,
+                color: Theme.of(context).colorScheme.errorContainer,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.red.withOpacity(0.4),
+                    color: Theme.of(context).colorScheme.error.withOpacity(0.2),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Icon(
                 LucideIcons.x,
-                color: Colors.white,
-                size: 32.sp,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+                size: 28.sp,
               ),
             ),
           ),
@@ -234,23 +234,23 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           GestureDetector(
             onTap: () => _onSwipeRight(currentItem.item.id),
             child: Container(
-              width: 64.w,
-              height: 64.w,
+              width: 56.w,
+              height: 56.w,
               decoration: BoxDecoration(
-                color: Colors.green,
+                color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.4),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                     blurRadius: 12,
-                    offset: const Offset(0, 6),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Icon(
                 LucideIcons.heart,
-                color: Colors.white,
-                size: 32.sp,
+                color: Theme.of(context).colorScheme.onPrimary,
+                size: 28.sp,
               ),
             ),
           ),
@@ -287,49 +287,63 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         // Loading overlay for chat navigation
         if (_isNavigatingToChat)
           Container(
-            color: Colors.green.withOpacity(0.8),
+            color: Theme.of(context).colorScheme.scrim.withOpacity(0.8),
             child: Center(
               child: Container(
-                padding: EdgeInsets.all(24.w),
+                padding: EdgeInsets.all(32.w),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(20.r),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(24.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 60.w,
-                      height: 60.w,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.green,
-                        ),
+                    Container(
+                      width: 80.w,
+                      height: 80.w,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        LucideIcons.heart,
+                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        size: 40.sp,
                       ),
                     ),
-                    SizedBox(height: 20.h),
+                    SizedBox(height: 24.h),
                     Text(
                       '¡Perfecto!',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.green,
+                        color: Theme.of(context).colorScheme.tertiary,
                         fontWeight: FontWeight.w700,
                         fontSize: 24.sp,
                       ),
                     ),
                     SizedBox(height: 8.h),
                     Text(
-                      'Abriendo chat...',
+                      'Conectando...',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.green.shade700,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 16.sp,
+                      ),
+                    ),
+                    SizedBox(height: 20.h),
+                    SizedBox(
+                      width: 40.w,
+                      height: 40.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -489,7 +503,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
               SizedBox(height: 24.h),
               Text(
-                'Permisos de Ubicación Requeridos',
+                'Para mostrarte objetos cerca',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onBackground,
@@ -498,7 +512,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
               SizedBox(height: 12.h),
               Text(
-                'Para mostrarte artículos cerca de ti, necesitamos acceso a tu ubicación.',
+                'Para mostrarte objetos cerca de ti, necesitamos acceso a tu ubicación.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4,
@@ -525,7 +539,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     ),
                   ),
                   child: Text(
-                    'Conceder Permisos',
+                    'Activar ubicación',
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
@@ -586,7 +600,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
               SizedBox(height: 24.h),
               Text(
-                'Obteniendo Ubicación',
+                'Buscando tu ubicación',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onBackground,
@@ -595,7 +609,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
               ),
               SizedBox(height: 12.h),
               Text(
-                'Estamos obteniendo tu ubicación actual para mostrarte artículos cercanos.',
+                'Buscando tu ubicación para mostrarte objetos cerca.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4,
