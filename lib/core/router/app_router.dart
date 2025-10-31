@@ -36,6 +36,7 @@ class AppRouter {
         final isPublicRoute = currentPath == '/' || 
                               currentPath == '/login' || 
                               currentPath == '/signup' ||
+                              currentPath == '/register' ||
                               currentPath == '/onboarding';
         
         // If user is authenticated and trying to access public routes, check onboarding status
@@ -84,6 +85,12 @@ class AppRouter {
           path: '/signup',
           name: 'signup',
           builder: (context, state) => const SignUpScreen(),
+        ),
+        // Alias for signup - register route (same page, different URL)
+        GoRoute(
+          path: '/register',
+          name: 'register',
+          builder: (context, state) => const SignUpScreen(), // Same page as signup
         ),
         
         // Location permission route

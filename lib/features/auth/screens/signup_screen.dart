@@ -414,7 +414,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.push('/login');
+              context.go('/login'); // Use go() instead of push() for better URL handling
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),

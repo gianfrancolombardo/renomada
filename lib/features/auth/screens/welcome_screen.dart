@@ -187,7 +187,7 @@ class WelcomeScreen extends StatelessWidget {
                 // Primary button - Create account
                 FilledButton(
                   onPressed: () {
-                    context.push('/signup');
+                    context.go('/signup'); // Use go() for better URL handling
                   },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
@@ -221,7 +221,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        context.push('/login');
+                        context.go('/login'); // Use go() for better URL handling
                       },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

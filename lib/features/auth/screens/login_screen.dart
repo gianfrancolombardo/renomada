@@ -326,7 +326,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.push('/signup');
+              context.go('/signup'); // Use go() instead of push() for better URL handling
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
