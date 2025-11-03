@@ -16,16 +16,20 @@ class AppRouter {
     return GoRouter(
       initialLocation: initialLocation,
       redirect: (context, state) {
-        // Check if this is an OAuth callback (has code or access_token in query)
+        // Check if this is an OAuth callback (has code or access_token in query/fragment)
         final uri = state.uri;
         final hasAuthCode = uri.queryParameters.containsKey('code');
-        final hasAccessToken = uri.fragment.contains('access_token=');
+        final hasAccessToken = uri.fragment.contains('access_token=') || 
+                               uri.queryParameters.containsKey('access_token');
         
         if (hasAuthCode || hasAccessToken) {
-          // This is an OAuth callback, let Supabase handle it
-          // Redirect to login screen which will handle the auth state change
-          print('OAuth callback detected, redirecting to login');
-          return '/login';
+          // This is an OAuth callback
+          // Supabase will automatically process it via onAuthStateChange
+          // Don't redirect yet - let Supabase handle the callback first
+          // The auth provider listener will handle navigation after successful auth
+          print('OAuth callback detected, processing...');
+          // Return null to allow the route to load, Supabase will handle the auth
+          return null;
         }
         
         // Check if user is authenticated
@@ -36,8 +40,7 @@ class AppRouter {
         final isPublicRoute = currentPath == '/' || 
                               currentPath == '/login' || 
                               currentPath == '/signup' ||
-                              currentPath == '/register' ||
-                              currentPath == '/onboarding';
+                              currentPath == '/register';
         
         // If user is authenticated and trying to access public routes, check onboarding status
         if (isAuthenticated && isPublicRoute) {

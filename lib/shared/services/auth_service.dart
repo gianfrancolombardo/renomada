@@ -54,11 +54,16 @@ class AuthService {
       // Determine redirect URL based on platform
       String redirectTo;
       if (kIsWeb) {
-        // For web, use current origin + callback path
-        // This will be set dynamically based on the deployment URL
-        final currentUrl = Uri.base.toString();
-        final baseUrl = currentUrl.replaceAll(RegExp(r'/#.*$'), '');
-        redirectTo = '$baseUrl/login';
+        // For web, use current origin (root URL without hash/path)
+        // This allows Supabase to handle the OAuth callback properly
+        // The redirect URL must match exactly what's configured in Supabase dashboard
+        // Example: https://app.renomada.com/ (without #/login)
+        final currentUrl = Uri.base;
+        final baseUrl = '${currentUrl.scheme}://${currentUrl.host}${currentUrl.hasPort ? ':${currentUrl.port}' : ''}';
+        // Use root URL - Supabase will append the callback params
+        // Note: The hash routing (#/login) is handled by the client-side router
+        redirectTo = '$baseUrl/';
+        print('OAuth redirect URL for web: $redirectTo');
       } else {
         // For mobile native apps, use deep link
         redirectTo = 'io.supabase.renomada://login-callback/';

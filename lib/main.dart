@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'core/config/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'shared/services/chat_realtime_service.dart';
+import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,13 +37,64 @@ void main() async {
   );
 }
 
-class RenomadaApp extends ConsumerWidget {
+class RenomadaApp extends ConsumerStatefulWidget {
   final String initialLocation;
   
   const RenomadaApp({super.key, required this.initialLocation});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RenomadaApp> createState() => _RenomadaAppState();
+}
+
+class _RenomadaAppState extends ConsumerState<RenomadaApp> {
+  GoRouter? _router;
+
+  @override
+  Widget build(BuildContext context) {
+    // Create router once using the container from context
+    _router ??= AppRouter.createRouter(
+      widget.initialLocation,
+      ProviderScope.containerOf(context),
+    );
+    // Listen to auth changes globally to handle OAuth callbacks
+    // This is especially important for Android where the callback may arrive
+    // when the app is in any screen (not just LoginScreen)
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      // Only handle navigation if user just authenticated (was null, now has user)
+      if (next.user != null && previous?.user == null) {
+        // Use a small delay to ensure Supabase has fully processed the session
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          
+          try {
+            final router = GoRouter.of(context);
+            final currentPath = router.routerDelegate.currentConfiguration.uri.path;
+            
+            // Only navigate if we're on a public route (welcome/login/signup)
+            // This prevents interfering with navigation that's already in progress
+            if (currentPath == '/' || 
+                currentPath == '/login' || 
+                currentPath == '/signup' ||
+                currentPath == '/register') {
+              print('Global auth listener: User authenticated, navigating from $currentPath');
+              
+              // Check if user needs onboarding
+              final authState = ref.read(authProvider);
+              final profile = authState.profile;
+              
+              if (profile != null && !profile.hasSeenOnboarding) {
+                router.go('/onboarding');
+              } else {
+                router.go('/feed');
+              }
+            }
+          } catch (e) {
+            print('Error in global auth listener navigation: $e');
+          }
+        });
+      }
+    });
+
     return ScreenUtilInit(
       designSize: const Size(375, 812), // iPhone X design size
       minTextAdapt: true,
@@ -53,7 +106,7 @@ class RenomadaApp extends ConsumerWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.dark, // Modo oscuro por defecto
-          routerConfig: AppRouter.createRouter(initialLocation, ProviderScope.containerOf(context)),
+          routerConfig: _router!,
         );
       },
     );
