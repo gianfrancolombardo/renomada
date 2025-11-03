@@ -420,6 +420,8 @@ class _MyItemsScreenState extends ConsumerState<MyItemsScreen> {
         return 'Entregado';
       case ItemStatus.paused:
         return 'Pausado';
+      case ItemStatus.deleted:
+        return 'Eliminado';
     }
   }
 
@@ -572,6 +574,8 @@ class _MyItemsScreenState extends ConsumerState<MyItemsScreen> {
         return Theme.of(context).colorScheme.secondary;
       case ItemStatus.paused:
         return Theme.of(context).colorScheme.error;
+      case ItemStatus.deleted:
+        return Theme.of(context).colorScheme.errorContainer;
     }
   }
 }

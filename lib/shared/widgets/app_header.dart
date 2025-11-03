@@ -4,20 +4,24 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final String? subtitle;
   final List<Widget>? actions;
   final Widget? leading;
-  final bool showLogo;
 
   const AppHeader({
     super.key,
     required this.title,
+    this.subtitle,
     this.actions,
     this.leading,
-    this.showLogo = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    print('📍 [AppHeader] Building header with:');
+    print('   - title: $title');
+    print('   - subtitle: $subtitle');
+    
     return AppBar(
       backgroundColor: Theme.of(context).colorScheme.surface,
       foregroundColor: Theme.of(context).colorScheme.onSurface,
@@ -26,24 +30,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: false,
       automaticallyImplyLeading: false,
       leading: leading,
-      title: Row(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (showLogo) ...[
-            Container(
-              width: 32.w,
-              height: 32.w,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Icon(
-                LucideIcons.compass,
-                size: 18.sp,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-            SizedBox(width: 12.w),
-          ],
           Text(
             title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -52,6 +42,28 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
+          if (subtitle != null && subtitle!.isNotEmpty) ...[
+            SizedBox(height: 2.h),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  LucideIcons.mapPin,
+                  size: 12.sp,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                SizedBox(width: 4.w),
+                Text(
+                  '$subtitle',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 12.sp,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
       actions: [
@@ -61,5 +73,5 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(56.h);
+  Size get preferredSize => subtitle != null ? Size.fromHeight(72.h) : Size.fromHeight(56.h);
 }

@@ -198,7 +198,11 @@ class ItemService {
     final response = await SupabaseConfig.from('items')
         .select('*')
         .eq('owner_id', user.id)
-        .inFilter('status', [ItemStatus.available.name, ItemStatus.exchanged.name])
+        .inFilter('status', [
+          ItemStatus.available.name, 
+          ItemStatus.exchanged.name, 
+          ItemStatus.paused.name
+        ]) // Exclude deleted items
         .order('created_at', ascending: false);
 
     print('📦 [ItemService] Received ${(response as List).length} items');
@@ -249,13 +253,13 @@ class ItemService {
     return Item.fromJson(response);
   }
 
-  // "Delete" an item (change status to exchanged)
+  // "Delete" an item (soft delete - change status to deleted)
   Future<void> deleteItem(String itemId) async {
     final user = SupabaseConfig.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
     await SupabaseConfig.from('items')
-        .update({'status': 'exchanged'})
+        .update({'status': 'deleted'})
         .eq('id', itemId)
         .eq('owner_id', user.id); // Ensure only owner can delete
   }

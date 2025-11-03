@@ -51,10 +51,11 @@ class AppTheme {
   static const Color surfaceContainerHighest = Color(0xFFFFF7EE);
   
   // Dark theme colors
-  static const Color darkPrimary = Color(0xFFB7BEFE);
-  static const Color darkOnPrimary = Color(0xFF1F1F1F);
-  static const Color darkPrimaryContainer = Color(0xFF4C57B6);
-  static const Color darkOnPrimaryContainer = Color(0xFFEEF0FF);
+  // static const Color darkPrimary = Color(0xFF8100DB);
+  static const Color darkPrimary = Color(0xFF6E33E6);
+  static const Color darkOnPrimary = Color(0xFFFFFFFF);
+  static const Color darkPrimaryContainer = Color(0xFF6B00B5);
+  static const Color darkOnPrimaryContainer = Color(0xFFF0D6FF);
   
   static const Color darkSecondary = Color(0xFFFF95DD);
   static const Color darkOnSecondary = Color(0xFF1F1F1F);
@@ -71,21 +72,21 @@ class AppTheme {
   static const Color darkErrorContainer = Color(0xFF8C1D18);
   static const Color darkOnErrorContainer = Color(0xFFFFDAD6);
   
-  static const Color darkBackground = Color(0xFF1F1F1F);
+  static const Color darkBackground = Color(0xFF10182C);
   static const Color darkOnBackground = Color(0xFFF5F5F5);
-  static const Color darkSurface = Color(0xFF1F1F1F);
+  static const Color darkSurface = Color(0xFF10182C);
   static const Color darkOnSurface = Color(0xFFF5F5F5);
-  static const Color darkSurfaceVariant = Color(0xFF313131);
+  static const Color darkSurfaceVariant = Color(0xFF1C293D);
   static const Color darkOnSurfaceVariant = Color(0xFFC8C8C8);
   
   static const Color darkOutline = Color(0xFF8A8A8A);
   static const Color darkOutlineVariant = Color(0xFF5A5A5A);
   
-  static const Color darkSurfaceContainerLowest = Color(0xFF1A1A1A);
-  static const Color darkSurfaceContainerLow = Color(0xFF1F1F1F);
-  static const Color darkSurfaceContainer = Color(0xFF252525);
-  static const Color darkSurfaceContainerHigh = Color(0xFF2B2B2B);
-  static const Color darkSurfaceContainerHighest = Color(0xFF313131);
+  static const Color darkSurfaceContainerLowest = Color(0xFF0C1320);
+  static const Color darkSurfaceContainerLow = Color(0xFF10182C);
+  static const Color darkSurfaceContainer = Color(0xFF141D2F);
+  static const Color darkSurfaceContainerHigh = Color(0xFF182235);
+  static const Color darkSurfaceContainerHighest = Color(0xFF1C293D);
   
   // Legacy color support
   static const Color primaryColor = primary;
@@ -291,66 +292,66 @@ class AppTheme {
         ),
       ),
       
-      // Text theme - Material Design 3 with Poppins & Lato (2025 Elegant)
+      // Text theme - Material Design 3 with Outfit & Lato (2025 Elegant)
       textTheme: TextTheme(
-        // Display styles - Poppins for headlines (Reduced sizes for elegance)
-        displayLarge: GoogleFonts.poppins(
+        // Display styles - Outfit for headlines (Reduced sizes for elegance)
+        displayLarge: GoogleFonts.outfit(
           fontSize: 42.sp,
           fontWeight: FontWeight.w300,
           color: onBackground,
           letterSpacing: -0.5,
           height: 1.1,
         ),
-        displayMedium: GoogleFonts.poppins(
+        displayMedium: GoogleFonts.outfit(
           fontSize: 36.sp,
           fontWeight: FontWeight.w300,
           color: onBackground,
           letterSpacing: -0.25,
           height: 1.15,
         ),
-        displaySmall: GoogleFonts.poppins(
+        displaySmall: GoogleFonts.outfit(
           fontSize: 28.sp,
           fontWeight: FontWeight.w400,
           color: onBackground,
           letterSpacing: 0,
           height: 1.2,
         ),
-        headlineLarge: GoogleFonts.poppins(
+        headlineLarge: GoogleFonts.outfit(
           fontSize: 24.sp,
           fontWeight: FontWeight.w500,
           color: onBackground,
           letterSpacing: 0,
           height: 1.25,
         ),
-        headlineMedium: GoogleFonts.poppins(
+        headlineMedium: GoogleFonts.outfit(
           fontSize: 20.sp,
           fontWeight: FontWeight.w500,
           color: onBackground,
           letterSpacing: 0,
           height: 1.3,
         ),
-        headlineSmall: GoogleFonts.poppins(
+        headlineSmall: GoogleFonts.outfit(
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
           color: onBackground,
           letterSpacing: 0,
           height: 1.35,
         ),
-        titleLarge: GoogleFonts.poppins(
+        titleLarge: GoogleFonts.outfit(
           fontSize: 16.sp,
           fontWeight: FontWeight.w600,
           color: onBackground,
           letterSpacing: 0,
           height: 1.4,
         ),
-        titleMedium: GoogleFonts.poppins(
+        titleMedium: GoogleFonts.outfit(
           fontSize: 14.sp,
           fontWeight: FontWeight.w600,
           color: onBackground,
           letterSpacing: 0.1,
           height: 1.45,
         ),
-        titleSmall: GoogleFonts.poppins(
+        titleSmall: GoogleFonts.outfit(
           fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           color: onBackground,
@@ -639,63 +640,63 @@ class AppTheme {
       
       // Text theme - Dark
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.poppins(
+        displayLarge: GoogleFonts.outfit(
           fontSize: 42.sp,
           fontWeight: FontWeight.w300,
           color: darkOnBackground,
           letterSpacing: -0.5,
           height: 1.1,
         ),
-        displayMedium: GoogleFonts.poppins(
+        displayMedium: GoogleFonts.outfit(
           fontSize: 36.sp,
           fontWeight: FontWeight.w300,
           color: darkOnBackground,
           letterSpacing: -0.25,
           height: 1.15,
         ),
-        displaySmall: GoogleFonts.poppins(
+        displaySmall: GoogleFonts.outfit(
           fontSize: 28.sp,
           fontWeight: FontWeight.w400,
           color: darkOnBackground,
           letterSpacing: 0,
           height: 1.2,
         ),
-        headlineLarge: GoogleFonts.poppins(
+        headlineLarge: GoogleFonts.outfit(
           fontSize: 24.sp,
           fontWeight: FontWeight.w500,
           color: darkOnBackground,
           letterSpacing: 0,
           height: 1.25,
         ),
-        headlineMedium: GoogleFonts.poppins(
+        headlineMedium: GoogleFonts.outfit(
           fontSize: 20.sp,
           fontWeight: FontWeight.w500,
           color: darkOnBackground,
           letterSpacing: 0,
           height: 1.3,
         ),
-        headlineSmall: GoogleFonts.poppins(
+        headlineSmall: GoogleFonts.outfit(
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
           color: darkOnBackground,
           letterSpacing: 0,
           height: 1.35,
         ),
-        titleLarge: GoogleFonts.poppins(
+        titleLarge: GoogleFonts.outfit(
           fontSize: 16.sp,
           fontWeight: FontWeight.w600,
           color: darkOnBackground,
           letterSpacing: 0,
           height: 1.4,
         ),
-        titleMedium: GoogleFonts.poppins(
+        titleMedium: GoogleFonts.outfit(
           fontSize: 14.sp,
           fontWeight: FontWeight.w600,
           color: darkOnBackground,
           letterSpacing: 0.1,
           height: 1.45,
         ),
-        titleSmall: GoogleFonts.poppins(
+        titleSmall: GoogleFonts.outfit(
           fontSize: 12.sp,
           fontWeight: FontWeight.w600,
           color: darkOnBackground,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../shared/widgets/unified_empty_state.dart';
+import '../providers/feed_provider.dart';
 
-class FeedEmptyState extends StatelessWidget {
+class FeedEmptyState extends ConsumerStatefulWidget {
   final double selectedRadius;
   final ValueChanged<double> onRadiusChanged;
   final VoidCallback onRefresh;
@@ -17,18 +19,75 @@ class FeedEmptyState extends StatelessWidget {
   });
 
   @override
+  ConsumerState<FeedEmptyState> createState() => _FeedEmptyStateState();
+}
+
+class _FeedEmptyStateState extends ConsumerState<FeedEmptyState> {
+  int? _totalActiveItems;
+  bool _isLoadingCount = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTotalActiveItems();
+  }
+
+  Future<void> _loadTotalActiveItems() async {
+    try {
+      final feedService = ref.read(feedProvider.notifier).feedService;
+      final count = await feedService.getTotalActiveItemsCount();
+      if (mounted) {
+        setState(() {
+          _totalActiveItems = count;
+          _isLoadingCount = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading total active items: $e');
+      if (mounted) {
+        setState(() {
+          _totalActiveItems = null;
+          _isLoadingCount = false;
+        });
+      }
+    }
+  }
+
+  String _getTitle() {
+    return 'No hay artículos cerca';
+  }
+
+  String _getSubtitle() {
+    if (_isLoadingCount) {
+      return 'Cargando información de la comunidad...';
+    }
+
+    if (_totalActiveItems == null || _totalActiveItems == 0) {
+      // No items in the platform yet
+      return '¡Sé el primero en publicar! La comunidad apenas está comenzando y cada aporte cuenta para construir algo increíble juntos.';
+    } else {
+      // Single message that works for all cases - shows count and encourages growth
+      final itemsText = _totalActiveItems == 1 ? 'artículo' : 'artículos';
+      return '¡La comunidad está creciendo! Ya hay $_totalActiveItems $itemsText disponibles pero ninguno en tu área.';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return UnifiedEmptyState(
       icon: LucideIcons.searchX,
-      title: 'No hay artículos cerca',
-      subtitle: '¡La comunidad está creciendo! Vuelve pronto para descubrir nuevos artículos.',
+      title: _getTitle(),
+      subtitle: _getSubtitle(),
       customContent: _buildRadiusSelector(context),
       primaryButtonText: 'Publicar objeto',
       primaryButtonIcon: LucideIcons.plus,
       onPrimaryButtonPressed: () => context.go('/my-items'),
       secondaryButtonText: 'Actualizar',
       secondaryButtonIcon: LucideIcons.refreshCw,
-      onSecondaryButtonPressed: onRefresh,
+      onSecondaryButtonPressed: () {
+        _loadTotalActiveItems();
+        widget.onRefresh();
+      },
     );
   }
 
@@ -51,9 +110,9 @@ class FeedEmptyState extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [25, 50].map((radius) {
-              final isSelected = radius == selectedRadius;
+              final isSelected = radius == widget.selectedRadius;
               return GestureDetector(
-                onTap: () => onRadiusChanged(radius.toDouble()),
+                onTap: () => widget.onRadiusChanged(radius.toDouble()),
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 16.w,

@@ -5,6 +5,7 @@ enum ItemStatus {
   available,
   exchanged,
   paused,
+  deleted,
 }
 
 enum ItemCondition {

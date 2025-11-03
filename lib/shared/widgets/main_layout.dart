@@ -4,6 +4,7 @@ import 'bottom_navigation.dart';
 
 class MainLayout extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final Widget child;
   final int currentIndex;
   final List<Widget>? actions;
@@ -12,6 +13,7 @@ class MainLayout extends StatelessWidget {
   const MainLayout({
     super.key,
     required this.title,
+    this.subtitle,
     required this.child,
     required this.currentIndex,
     this.actions,
@@ -24,6 +26,7 @@ class MainLayout extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppHeader(
         title: title,
+        subtitle: subtitle,
         actions: actions,
         leading: leading,
       ),

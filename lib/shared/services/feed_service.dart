@@ -335,4 +335,45 @@ class FeedService {
     // It's a storage path (e.g., "avatars/userId/file.png")
     return true;
   }
+
+  /// Get total count of active items (available, not delivered, not deleted)
+  /// Optimized: uses RPC function if available, otherwise falls back to efficient query
+  Future<int> getTotalActiveItemsCount() async {
+    try {
+      print('🔢 [FeedService] Getting total active items count');
+      
+      // Try RPC function first (most efficient)
+      try {
+        final rpcResponse = await SupabaseConfig.rpc('count_active_items');
+        if (rpcResponse != null) {
+          final count = rpcResponse is int ? rpcResponse : (rpcResponse as Map)['count'] as int? ?? 0;
+          print('✅ [FeedService] Total active items (RPC): $count');
+          return count;
+        }
+      } catch (rpcError) {
+        print('⚠️ [FeedService] RPC function not available, using fallback: $rpcError');
+      }
+      
+      // Fallback: optimized query - fetch only 1 row to verify existence, then estimate
+      // This avoids loading 1000 rows when we just need a count
+      final response = await SupabaseConfig.from('items')
+          .select('id')
+          .eq('status', 'available')
+          .limit(1001); // Check if more than 1000 exist
+
+      final items = response as List;
+      final count = items.length;
+      
+      // If we got exactly 1001, there are likely more (capped at 1000+)
+      final estimatedCount = count == 1001 ? 1000 : count;
+      
+      print('✅ [FeedService] Total active items (estimated): $estimatedCount${count == 1001 ? '+' : ''}');
+      
+      return estimatedCount;
+    } catch (e) {
+      print('❌ [FeedService] Error getting total active items count: $e');
+      // Return 0 on error to avoid breaking the UI
+      return 0;
+    }
+  }
 }

@@ -346,7 +346,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildQuickActionsGrid(BuildContext context) {
     final actions = [
       {
-        'title': 'Mis Artículos',
+        'title': 'Objetos',
         'icon': Icons.inventory_2_outlined,
         'onTap': () => context.push('/my-items'),
         'color': Theme.of(context).colorScheme.primary,
@@ -364,7 +364,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'color': Theme.of(context).colorScheme.tertiary,
       },
       {
-        'title': 'Mi Perfil',
+        'title': 'Perfil',
         'icon': Icons.person_outline,
         'onTap': () => context.push('/profile'),
         'color': Theme.of(context).colorScheme.primary,
