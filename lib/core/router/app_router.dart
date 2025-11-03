@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
@@ -13,8 +14,12 @@ import '../../features/auth/providers/auth_provider.dart';
 
 class AppRouter {
   static GoRouter createRouter(String initialLocation, ProviderContainer container) {
+    // Create a notifier that will trigger router refresh when auth state changes
+    final authListenable = _AuthListenable(container);
+    
     return GoRouter(
       initialLocation: initialLocation,
+      refreshListenable: authListenable,
       redirect: (context, state) {
         // Check if this is an OAuth callback (has code or access_token in query/fragment)
         final uri = state.uri;
@@ -25,10 +30,23 @@ class AppRouter {
         if (hasAuthCode || hasAccessToken) {
           // This is an OAuth callback
           // Supabase will automatically process it via onAuthStateChange
-          // Don't redirect yet - let Supabase handle the callback first
-          // The auth provider listener will handle navigation after successful auth
+          // Wait a bit for Supabase to process, then check auth status
           print('OAuth callback detected, processing...');
+          
+          // Check if user is already authenticated (callback may have been processed)
+          final isAuthenticated = SupabaseConfig.isAuthenticated;
+          if (isAuthenticated) {
+            // Callback already processed, redirect based on onboarding status
+            final authState = container.read(authProvider);
+            final profile = authState.profile;
+            if (profile != null && !profile.hasSeenOnboarding) {
+              return '/onboarding';
+            }
+            return '/feed';
+          }
+          
           // Return null to allow the route to load, Supabase will handle the auth
+          // The router will refresh when auth state changes (via refreshListenable)
           return null;
         }
         
@@ -157,5 +175,22 @@ class AppRouter {
   }
   
   // Note: Static router removed - use createRouter with ProviderContainer instead
+}
+
+// ChangeNotifier that notifies router when auth state changes
+class _AuthListenable extends ChangeNotifier {
+  final ProviderContainer _container;
+  _AuthListenable(this._container) {
+    // Listen to auth state changes
+    _container.listen(
+      authProvider,
+      (previous, next) {
+        // Notify listeners when auth state changes (user logs in/out)
+        // This will trigger the router to re-evaluate redirects
+        notifyListeners();
+      },
+      fireImmediately: false,
+    );
+  }
 }
 

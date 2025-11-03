@@ -59,24 +59,27 @@ class _RenomadaAppState extends ConsumerState<RenomadaApp> {
     // Listen to auth changes globally to handle OAuth callbacks
     // This is especially important for Android where the callback may arrive
     // when the app is in any screen (not just LoginScreen)
+    // Note: The router's refreshListenable should handle most cases,
+    // but this provides a fallback for edge cases
     ref.listen<AuthState>(authProvider, (previous, next) {
       // Only handle navigation if user just authenticated (was null, now has user)
       if (next.user != null && previous?.user == null) {
         // Use a small delay to ensure Supabase has fully processed the session
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // and router refresh has been triggered
+        Future.delayed(const Duration(milliseconds: 800), () {
           if (!mounted) return;
           
           try {
             final router = GoRouter.of(context);
             final currentPath = router.routerDelegate.currentConfiguration.uri.path;
             
-            // Only navigate if we're on a public route (welcome/login/signup)
-            // This prevents interfering with navigation that's already in progress
+            // Only navigate if we're still on a public route (welcome/login/signup)
+            // The router's redirect logic should handle this, but this is a fallback
             if (currentPath == '/' || 
                 currentPath == '/login' || 
                 currentPath == '/signup' ||
                 currentPath == '/register') {
-              print('Global auth listener: User authenticated, navigating from $currentPath');
+              print('Global auth listener (fallback): User authenticated, navigating from $currentPath');
               
               // Check if user needs onboarding
               final authState = ref.read(authProvider);
