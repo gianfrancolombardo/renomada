@@ -11,6 +11,7 @@ class SupabaseConstants {
   static const String chatsTable = 'chats';
   static const String messagesTable = 'messages';
   static const String pushTokensTable = 'push_tokens';
+  static const String locationLogsTable = 'location_logs';
   
   // RPC Functions
   static const String feedItemsByRadiusFunction = 'feed_items_by_radius';

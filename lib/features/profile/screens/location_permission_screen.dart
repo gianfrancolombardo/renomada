@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/services/location_service.dart';
+import '../../../shared/services/location_log_service.dart';
 import '../../../shared/utils/snackbar_utils.dart';
 import '../providers/location_provider.dart';
 import '../providers/profile_provider.dart';
@@ -307,6 +308,10 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
   }
 
   void _handleSkip() {
+    // Log skip action
+    final logService = LocationLogService();
+    logService.logSkipLocation();
+    
     // Navigate to home without location
     _navigateAfterLocationObtained();
   }

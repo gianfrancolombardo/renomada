@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../shared/services/location_service.dart';
 import '../../../shared/services/profile_service.dart';
+import '../../../shared/services/location_log_service.dart';
 
 // Location state
 class LocationState {
@@ -48,17 +49,40 @@ class LocationNotifier extends StateNotifier<LocationState> {
 
   final LocationService _locationService = LocationService();
   final ProfileService _profileService = ProfileService();
+  final LocationLogService _logService = LocationLogService();
 
   // Initialize location status
   Future<void> _initializeLocation() async {
-    final permission = await _locationService.checkLocationPermission();
-    state = state.copyWith(permissionStatus: permission);
+    try {
+      _logService.startNewSession();
+      final permission = await _locationService.checkLocationPermission();
+      await _logService.logInitialize(permission);
+      state = state.copyWith(permissionStatus: permission);
+    } catch (e) {
+      await _logService.logEvent(
+        eventType: LocationEventType.initialize,
+        action: LocationAction.initialize,
+        errorCode: 'init_failed',
+        errorMessage: e.toString(),
+      );
+    }
   }
 
   // Request location permission and get location
   Future<bool> requestLocationPermission() async {
     try {
+      _logService.startNewSession(); // Start new session for this flow
       state = state.copyWith(isLoading: true, error: null);
+
+      // Check GPS first
+      final isGpsEnabled = await _locationService.isLocationServiceEnabled();
+      if (!isGpsEnabled) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'El GPS está desactivado. Por favor, actívalo en la configuración.',
+        );
+        return false;
+      }
 
       // Request permission
       final permission = await _locationService.requestLocationPermission();
@@ -69,7 +93,47 @@ class LocationNotifier extends StateNotifier<LocationState> {
 
       if (permission == LocationPermissionStatus.granted) {
         // Get current location
-        final position = await _locationService.getHighAccuracyLocation();
+        Position? position;
+        try {
+          position = await _locationService.getHighAccuracyLocation();
+        } on LocationException catch (e) {
+          // Handle specific location errors
+          String errorMessage;
+          switch (e.code) {
+            case 'gps_disabled':
+              errorMessage = 'El GPS está desactivado. Por favor, actívalo en la configuración.';
+              break;
+            case 'permission_denied':
+              errorMessage = 'Permiso de ubicación denegado.';
+              break;
+            case 'timeout':
+              errorMessage = 'Tiempo de espera agotado. Intenta de nuevo en un lugar con mejor señal.';
+              break;
+            case 'gps_error':
+              errorMessage = 'Error al obtener la ubicación. Verifica que el GPS esté activado.';
+              break;
+            default:
+              errorMessage = 'No se pudo obtener la ubicación: ${e.message}';
+          }
+          
+          state = state.copyWith(
+            isLoading: false,
+            error: errorMessage,
+          );
+          return false;
+        } catch (e) {
+          await _logService.logLocationError(
+            errorCode: 'unknown_error',
+            errorMessage: e.toString(),
+            errorDetails: {'action': 'request_location_permission'},
+          );
+          
+          state = state.copyWith(
+            isLoading: false,
+            error: 'Error al obtener ubicación: ${e.toString()}',
+          );
+          return false;
+        }
         
         if (position != null) {
           state = state.copyWith(
@@ -79,7 +143,17 @@ class LocationNotifier extends StateNotifier<LocationState> {
           );
 
           // Update location in profile
-          await _updateProfileLocation(position);
+          final updateSuccess = await _updateProfileLocation(position);
+          if (!updateSuccess) {
+            // Location obtained but failed to save - log it but don't fail the operation
+            await _logService.logEvent(
+              eventType: LocationEventType.locationSuccess,
+              action: LocationAction.getHighAccuracyLocation,
+              position: position,
+              errorCode: 'save_failed',
+              errorMessage: 'Location obtained but failed to save to profile',
+            );
+          }
           
           return true;
         } else {
@@ -97,6 +171,12 @@ class LocationNotifier extends StateNotifier<LocationState> {
         return false;
       }
     } catch (e) {
+      await _logService.logLocationError(
+        errorCode: 'request_permission_failed',
+        errorMessage: e.toString(),
+        errorDetails: {'action': 'request_location_permission'},
+      );
+      
       state = state.copyWith(
         isLoading: false,
         error: 'Error al obtener ubicación: ${e.toString()}',
@@ -109,13 +189,69 @@ class LocationNotifier extends StateNotifier<LocationState> {
   Future<bool> getCurrentLocation() async {
     try {
       if (!state.isPermissionGranted) {
+        await _logService.logEvent(
+          eventType: LocationEventType.permissionDenied,
+          action: LocationAction.getLocation,
+          permissionStatus: state.permissionStatus,
+          errorCode: 'permission_not_granted',
+          errorMessage: 'Permission not granted',
+        );
         state = state.copyWith(error: 'Permiso de ubicación no concedido');
         return false;
       }
 
       state = state.copyWith(isLoading: true, error: null);
 
-      final position = await _locationService.getCurrentLocation();
+      // Check GPS first
+      final isGpsEnabled = await _locationService.isLocationServiceEnabled();
+      if (!isGpsEnabled) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'El GPS está desactivado. Por favor, actívalo en la configuración.',
+        );
+        return false;
+      }
+
+      Position? position;
+      try {
+        position = await _locationService.getCurrentLocation();
+      } on LocationException catch (e) {
+        String errorMessage;
+        switch (e.code) {
+          case 'gps_disabled':
+            errorMessage = 'El GPS está desactivado. Por favor, actívalo en la configuración.';
+            break;
+          case 'permission_denied':
+            errorMessage = 'Permiso de ubicación denegado.';
+            break;
+          case 'timeout':
+            errorMessage = 'Tiempo de espera agotado. Intenta de nuevo en un lugar con mejor señal.';
+            break;
+          case 'gps_error':
+            errorMessage = 'Error al obtener la ubicación. Verifica que el GPS esté activado.';
+            break;
+          default:
+            errorMessage = 'No se pudo obtener la ubicación: ${e.message}';
+        }
+        
+        state = state.copyWith(
+          isLoading: false,
+          error: errorMessage,
+        );
+        return false;
+      } catch (e) {
+        await _logService.logLocationError(
+          errorCode: 'unknown_error',
+          errorMessage: e.toString(),
+          errorDetails: {'action': 'get_current_location'},
+        );
+        
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Error al obtener ubicación: ${e.toString()}',
+        );
+        return false;
+      }
       
       if (position != null) {
         state = state.copyWith(
@@ -125,7 +261,17 @@ class LocationNotifier extends StateNotifier<LocationState> {
         );
 
         // Update location in profile
-        await _updateProfileLocation(position);
+        final updateSuccess = await _updateProfileLocation(position);
+        if (!updateSuccess) {
+          // Location obtained but failed to save - log it
+          await _logService.logEvent(
+            eventType: LocationEventType.locationSuccess,
+            action: LocationAction.getLocation,
+            position: position,
+            errorCode: 'save_failed',
+            errorMessage: 'Location obtained but failed to save to profile',
+          );
+        }
         
         return true;
       } else {
@@ -136,6 +282,12 @@ class LocationNotifier extends StateNotifier<LocationState> {
         return false;
       }
     } catch (e) {
+      await _logService.logLocationError(
+        errorCode: 'get_location_failed',
+        errorMessage: e.toString(),
+        errorDetails: {'action': 'get_current_location'},
+      );
+      
       state = state.copyWith(
         isLoading: false,
         error: 'Error al obtener ubicación: ${e.toString()}',
@@ -145,15 +297,32 @@ class LocationNotifier extends StateNotifier<LocationState> {
   }
 
   // Update location in profile
-  Future<void> _updateProfileLocation(Position position) async {
+  Future<bool> _updateProfileLocation(Position position) async {
     try {
       await _profileService.updateLocation(
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      
+      await _logService.logEvent(
+        eventType: LocationEventType.locationSuccess,
+        action: LocationAction.getLocation,
+        position: position,
+        metadata: {'saved_to_profile': true},
+      );
+      
+      return true;
     } catch (e) {
       // Log error but don't update state - location was obtained successfully
-      print('Error updating profile location: $e');
+      await _logService.logEvent(
+        eventType: LocationEventType.locationSuccess,
+        action: LocationAction.getLocation,
+        position: position,
+        errorCode: 'save_failed',
+        errorMessage: e.toString(),
+        errorDetails: {'action': 'update_profile_location'},
+      );
+      return false;
     }
   }
 

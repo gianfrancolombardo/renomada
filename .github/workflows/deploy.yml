@@ -3,9 +3,7 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - main  # Cambia a 'master' si ese es tu branch principal
-      # También puedes agregar más branches:
-      # - develop
+      - main 
 
 jobs:
   deploy:
