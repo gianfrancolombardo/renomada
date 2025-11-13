@@ -40,12 +40,124 @@ class FeedService {
           : null,
     );
 
-    return FeedItem(
-      item: item,
-      owner: owner,
-      distanceKm: (row['distance_km'] as num).toDouble(),
-      firstPhotoUrl: null, // Will be set later
-    );
+          return FeedItem(
+            item: item,
+            owner: owner,
+            distanceKm: row['distance_km'] != null ? (row['distance_km'] as num).toDouble() : null,
+            firstPhotoUrl: null, // Will be set later
+          );
+  }
+
+  // Get recent feed items without location filter (for users without location permission)
+  // Maximum 10 items, no pagination
+  Future<List<FeedItem>> getFeedItemsWithoutLocation() async {
+    try {
+      print('🔍 [FeedService] Starting recent feed items fetch (no location)');
+      
+      final user = SupabaseConfig.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+      
+      print('👤 [FeedService] User authenticated: ${user.id}');
+
+      // Call the RPC function for recent items (no pagination, max 10)
+      print('🚀 [FeedService] Calling RPC function: feed_items_recent');
+      
+      final response = await SupabaseConfig.rpc('feed_items_recent', {
+        'p_user_id': user.id,
+      });
+      
+      print('📦 [FeedService] RPC response received: ${response?.length ?? 0} items');
+
+      if (response == null || response.isEmpty) {
+        print('📭 [FeedService] No items found in response');
+        return [];
+      }
+
+      final feedItems = <FeedItem>[];
+      final List<String> photoPaths = [];
+      final List<String> avatarPaths = [];
+      
+      final responseList = response is List ? response : (response != null ? [response] : []);
+      
+      for (final row in responseList) {
+        if (row is! Map) continue;
+        
+        final photoPath = row['first_photo_path'];
+        if (photoPath != null && photoPath is String && photoPath.isNotEmpty) {
+          photoPaths.add(photoPath);
+        }
+        
+        final avatarPath = row['owner_avatar_url'];
+        if (avatarPath != null && avatarPath is String && _isStoragePath(avatarPath)) {
+          avatarPaths.add(avatarPath);
+        }
+      }
+
+      final Map<String, String> photoUrls = await _getBatchSignedUrls(photoPaths, 'item-photos');
+      final Map<String, String> avatarUrls = await _getBatchSignedUrls(avatarPaths, 'avatars');
+
+      for (final row in responseList) {
+        try {
+          if (row is! Map) continue;
+
+          String? firstPhotoUrl;
+          final photoPath = row['first_photo_path'];
+          if (photoPath != null && photoPath is String && photoPath.isNotEmpty) {
+            firstPhotoUrl = photoUrls[photoPath];
+          }
+
+          String? ownerAvatarUrl = row['owner_avatar_url'] as String?;
+          if (ownerAvatarUrl != null && _isStoragePath(ownerAvatarUrl)) {
+            ownerAvatarUrl = avatarUrls[ownerAvatarUrl];
+          }
+
+          // Create item (matching feed_items_by_radius structure)
+          final item = Item(
+            id: row['item_id'] as String,
+            ownerId: row['owner_id'] as String,
+            title: row['item_title'] as String,
+            description: row['item_description'] as String?,
+            status: ItemStatus.values.firstWhere(
+              (v) => v.name == row['item_status'],
+              orElse: () => ItemStatus.available,
+            ),
+            condition: parseItemCondition(row['item_condition'] as String?),
+            exchangeType: parseExchangeType(row['item_exchange_type'] as String?),
+            createdAt: DateTime.parse(row['item_created_at'] as String),
+            updatedAt: row['item_updated_at'] != null 
+                ? DateTime.parse(row['item_updated_at'] as String)
+                : null,
+          );
+
+          final owner = UserProfile(
+            userId: row['owner_id'] as String,
+            username: row['owner_username'] as String?,
+            avatarUrl: ownerAvatarUrl,
+            lastSeenAt: row['owner_last_seen_at'] != null 
+                ? DateTime.parse(row['owner_last_seen_at'] as String)
+                : null,
+          );
+
+          final feedItem = FeedItem(
+            item: item,
+            owner: owner,
+            distanceKm: row['distance_km'] != null ? (row['distance_km'] as num).toDouble() : null,
+            firstPhotoUrl: firstPhotoUrl,
+          );
+
+          feedItems.add(feedItem);
+        } catch (e) {
+          print('❌ [FeedService] Error parsing feed item: $e');
+          continue;
+        }
+      }
+
+      print('🎉 [FeedService] Successfully processed ${feedItems.length} recent feed items');
+      return feedItems;
+    } catch (e) {
+      print('💥 [FeedService] Error fetching recent feed items: $e');
+      throw Exception('Error al cargar items recientes: $e');
+    }
   }
 
   // Get feed items within radius

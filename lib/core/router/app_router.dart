@@ -6,6 +6,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/signup_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/profile/screens/location_permission_screen.dart';
+import '../../features/profile/screens/location_recovery_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../shared/screens/main_screens.dart';
@@ -119,6 +120,13 @@ class AppRouter {
           path: '/location-permission',
           name: 'location-permission',
           builder: (context, state) => const LocationPermissionScreen(),
+        ),
+        
+        // Location recovery route
+        GoRoute(
+          path: '/location-recovery',
+          name: 'location-recovery',
+          builder: (context, state) => const LocationRecoveryScreen(),
         ),
         
         // Home route

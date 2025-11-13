@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../shared/widgets/unified_empty_state.dart';
 import '../providers/feed_provider.dart';
+import '../../profile/providers/location_provider.dart';
 
 class FeedEmptyState extends ConsumerStatefulWidget {
   final double selectedRadius;
@@ -29,10 +30,30 @@ class _FeedEmptyStateState extends ConsumerState<FeedEmptyState> {
   @override
   void initState() {
     super.initState();
-    _loadTotalActiveItems();
+    // Only load count if location is available
+    final locationState = ref.read(locationProvider);
+    if (locationState.isPermissionGranted && locationState.hasLocation) {
+      _loadTotalActiveItems();
+    } else {
+      // Skip loading count when no location
+      setState(() {
+        _isLoadingCount = false;
+        _totalActiveItems = null;
+      });
+    }
   }
 
   Future<void> _loadTotalActiveItems() async {
+    // Double check location is still available before calling
+    final locationState = ref.read(locationProvider);
+    if (!locationState.isPermissionGranted || !locationState.hasLocation) {
+      setState(() {
+        _isLoadingCount = false;
+        _totalActiveItems = null;
+      });
+      return;
+    }
+
     try {
       final feedService = ref.read(feedProvider.notifier).feedService;
       final count = await feedService.getTotalActiveItemsCount();
@@ -85,7 +106,11 @@ class _FeedEmptyStateState extends ConsumerState<FeedEmptyState> {
       secondaryButtonText: 'Actualizar',
       secondaryButtonIcon: LucideIcons.refreshCw,
       onSecondaryButtonPressed: () {
-        _loadTotalActiveItems();
+        // Only reload count if location is available
+        final locationState = ref.read(locationProvider);
+        if (locationState.isPermissionGranted && locationState.hasLocation) {
+          _loadTotalActiveItems();
+        }
         widget.onRefresh();
       },
     );

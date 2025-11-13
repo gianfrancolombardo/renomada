@@ -4,6 +4,7 @@ import '../providers/feed_provider.dart';
 import '../../../shared/widgets/avatar_image.dart';
 import '../../../shared/widgets/item_badges.dart';
 import '../../../shared/models/user_profile.dart';
+import '../../../shared/models/item.dart';
 
 class FeedCard extends StatefulWidget {
   final FeedItem feedItem;
@@ -116,7 +117,6 @@ class _FeedCardState extends State<FeedCard>
   Widget build(BuildContext context) {
     final item = widget.feedItem.item;
     final owner = widget.feedItem.owner;
-    final distance = widget.feedItem.distanceKm;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -154,7 +154,7 @@ class _FeedCardState extends State<FeedCard>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // Owner info
-                                  _buildOwnerInfo(owner, distance),
+                                  _buildOwnerInfo(owner, item),
                                   
                                   const SizedBox(height: 12),
                                   
@@ -248,7 +248,10 @@ class _FeedCardState extends State<FeedCard>
     );
   }
 
-  Widget _buildOwnerInfo(UserProfile owner, double distance) {
+  Widget _buildOwnerInfo(UserProfile owner, Item item) {
+    final hasDistance = widget.feedItem.hasDistance;
+    final distance = widget.feedItem.distanceKm;
+    
     return Row(
       children: [
         AvatarImage(
@@ -270,7 +273,9 @@ class _FeedCardState extends State<FeedCard>
                 ),
               ),
               Text(
-                '${distance.toStringAsFixed(1)} km de distancia',
+                hasDistance
+                    ? '${distance!.toStringAsFixed(1)} km de distancia'
+                    : _formatTimeAgo(item.createdAt),
                 style: TextStyle(
                   color: Colors.grey.shade600,
                   fontSize: 12,
@@ -351,6 +356,21 @@ class _FeedCardState extends State<FeedCard>
       return '${difference.inHours}h';
     } else {
       return '${difference.inDays}d';
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return 'Publicado hace ${difference.inDays} día${difference.inDays == 1 ? '' : 's'}';
+    } else if (difference.inHours > 0) {
+      return 'Publicado hace ${difference.inHours} hora${difference.inHours == 1 ? '' : 's'}';
+    } else if (difference.inMinutes > 0) {
+      return 'Publicado hace ${difference.inMinutes} min';
+    } else {
+      return 'Publicado ahora';
     }
   }
 }

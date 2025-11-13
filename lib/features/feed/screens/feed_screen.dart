@@ -12,6 +12,7 @@ import '../widgets/feed_loading_state.dart';
 import '../widgets/feed_error_state.dart';
 import '../../profile/providers/location_provider.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../../shared/services/location_service.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   final bool isRadiusSelectorVisible;
@@ -63,6 +64,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         await ref.read(feedProvider.notifier).loadFeed(refresh: true);
       }
     }
+    
+    // If no permission, load recent items without location
+    if (!locationState.isPermissionGranted) {
+      await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
+    }
   }
 
   @override
@@ -83,6 +89,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       if (updatedLocationState.hasLocation) {
         await ref.read(feedProvider.notifier).loadFeed(refresh: true);
       }
+    } else {
+      // No permission, load recent items
+      await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
     }
   }
 
@@ -90,15 +99,20 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     // Update location first, then load feed
     final locationState = ref.read(locationProvider);
     
-    if (locationState.isPermissionGranted) {
+    if (locationState.isPermissionGranted && locationState.hasLocation) {
       await ref.read(locationProvider.notifier).getCurrentLocation();
       await ref.read(feedProvider.notifier).refresh();
-    } else {
-      // Show location permission request
-      await ref.read(locationProvider.notifier).requestLocationPermission();
-      if (ref.read(locationProvider).isPermissionGranted) {
+    } else if (locationState.isPermissionGranted && !locationState.hasLocation) {
+      await ref.read(locationProvider.notifier).getCurrentLocation();
+      final updatedLocationState = ref.read(locationProvider);
+      if (updatedLocationState.hasLocation) {
         await ref.read(feedProvider.notifier).refresh();
+      } else {
+        await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
       }
+    } else {
+      // No permission, refresh recent items
+      await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
     }
   }
 
@@ -358,6 +372,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   Widget _buildBody(feedState, locationState, profileState) {
     return Column(
       children: [
+        // Banner informativo cuando no hay ubicación
+        if (!locationState.isPermissionGranted || !locationState.hasLocation)
+          _buildLocationInfoBanner(locationState),
+        
         // Radius selector - now toggleable
         if (locationState.isPermissionGranted && locationState.hasLocation)
           RadiusSelector(
@@ -371,22 +389,16 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           child: _buildContent(feedState, locationState),
         ),
         
-        // Action buttons below the content
-        if (locationState.isPermissionGranted && locationState.hasLocation && 
-            feedState.items.isNotEmpty)
+        // Action buttons below the content (show when there are items, regardless of location)
+        if (feedState.items.isNotEmpty)
           _buildActionButtons(feedState),
       ],
     );
   }
 
   Widget _buildContent(FeedState feedState, LocationState locationState) {
-    // Check location permission first
-    if (!locationState.isPermissionGranted) {
-      return _buildLocationPermissionRequired();
-    }
-
     // If permission is granted but no location, show loading while trying to get it
-    if (!locationState.hasLocation) {
+    if (locationState.isPermissionGranted && !locationState.hasLocation) {
       if (locationState.isLoading) {
         return const Center(
           child: Column(
@@ -405,9 +417,20 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           ref.read(locationProvider.notifier).getCurrentLocation();
         }
       });
-      return _buildLocationRequired();
+      // Show recent items while trying to get location
+      return _buildFeedContent(feedState, locationState);
     }
 
+    // If no permission, show recent items (feed limitado)
+    if (!locationState.isPermissionGranted) {
+      return _buildFeedContent(feedState, locationState);
+    }
+
+    // Show feed content (with location)
+    return _buildFeedContent(feedState, locationState);
+  }
+
+  Widget _buildFeedContent(FeedState feedState, LocationState locationState) {
     // Show feed content
     if (feedState.isLoading && feedState.items.isEmpty) {
       return const FeedLoadingState();
@@ -416,7 +439,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     if (feedState.hasError) {
       return FeedErrorState(
         error: feedState.error!,
-        onRetry: () => ref.read(feedProvider.notifier).loadFeed(refresh: true),
+        onRetry: () {
+          if (locationState.isPermissionGranted && locationState.hasLocation) {
+            ref.read(feedProvider.notifier).loadFeed(refresh: true);
+          } else {
+            ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
+          }
+        },
       );
     }
 
@@ -438,13 +467,23 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
             _currentIndex = index;
           });
           
-          // Load more items when approaching the end
+          // Load more items when approaching the end (only if has location)
           if (index >= feedState.items.length - 3) {
-            ref.read(feedProvider.notifier).loadMoreItems();
+            if (locationState.isPermissionGranted && locationState.hasLocation) {
+              ref.read(feedProvider.notifier).loadMoreItems();
+            }
+            // No pagination for recent items (max 10)
           }
         },
-        itemCount: feedState.items.length,
+        itemCount: feedState.items.length + (feedState.items.length == 10 && !locationState.isPermissionGranted ? 1 : 0),
         itemBuilder: (context, index) {
+          // Show limit message after 10 items if no location
+          if (!locationState.isPermissionGranted && 
+              feedState.items.length == 10 && 
+              index == 10) {
+            return _buildLimitReachedMessage(locationState);
+          }
+
           if (index >= feedState.items.length) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -464,70 +503,75 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
-  Widget _buildLocationPermissionRequired() {
+  Widget _buildLimitReachedMessage(LocationState locationState) {
+    final isPermanentlyDenied = locationState.permissionStatus == LocationPermissionStatus.permanentlyDenied;
+    
     return Center(
       child: Padding(
         padding: EdgeInsets.all(24.w),
         child: Container(
-          padding: EdgeInsets.all(32.w),
+          padding: EdgeInsets.all(24.w),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(24.r),
+            borderRadius: BorderRadius.circular(20.r),
             border: Border.all(
               color: Theme.of(context).colorScheme.outlineVariant,
               width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 80.w,
-                height: 80.w,
+                width: 64.w,
+                height: 64.w,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(20.r),
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16.r),
                 ),
                 child: Icon(
-                  Icons.location_off_outlined,
-                  size: 40.sp,
-                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  LucideIcons.info,
+                  size: 32.sp,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 20.h),
               Text(
-                'Para mostrarte objetos cerca',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                'Límite alcanzado',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onBackground,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 12.h),
               Text(
-                'Para mostrarte objetos cerca de ti, necesitamos acceso a tu ubicación.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                'Has visto los 10 objetos más recientes disponibles sin ubicación.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4,
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 32.h),
+              SizedBox(height: 8.h),
+              Text(
+                'Activa la ubicación para ver objetos cerca de ti y acceder a más contenido.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24.h),
               SizedBox(
                 width: double.infinity,
-                height: 56.h,
+                height: 48.h,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    await ref.read(locationProvider.notifier).requestLocationPermission();
-                    if (ref.read(locationProvider).isPermissionGranted) {
-                      await _loadFeedIfPossible();
+                  onPressed: () {
+                    if (isPermanentlyDenied) {
+                      context.push('/location-recovery');
+                    } else {
+                      context.push('/location-permission');
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -535,15 +579,25 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.r),
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
-                  child: Text(
-                    'Activar ubicación',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        LucideIcons.mapPin,
+                        size: 18.sp,
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        isPermanentlyDenied ? 'Abrir configuración' : 'Activar ubicación',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -554,78 +608,85 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
-  Widget _buildLocationRequired() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: Container(
-          padding: EdgeInsets.all(32.w),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(24.r),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              width: 1,
+  Widget _buildLocationInfoBanner(LocationState locationState) {
+    final isPermanentlyDenied = locationState.permissionStatus == LocationPermissionStatus.permanentlyDenied;
+    
+    return Container(
+      margin: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(10.r),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            child: Icon(
+              isPermanentlyDenied ? LucideIcons.mapPinOff : LucideIcons.mapPin,
+              size: 20.sp,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80.w,
-                height: 80.w,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primaryContainer,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPermanentlyDenied 
+                      ? 'Ubicación bloqueada'
+                      : 'Ubicación desactivada',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
-                  borderRadius: BorderRadius.circular(20.r),
                 ),
-                child: Icon(
-                  Icons.my_location_outlined,
-                  size: 40.sp,
-                  color: Theme.of(context).colorScheme.onPrimary,
+                SizedBox(height: 4.h),
+                Text(
+                  'Mostrando últimos objetos, no los más cercanos',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    height: 1.3,
+                  ),
                 ),
-              ),
-              SizedBox(height: 24.h),
-              Text(
-                'Buscando tu ubicación',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onBackground,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 12.h),
-              Text(
-                'Buscando tu ubicación para mostrarte objetos cerca.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 32.h),
-              CircularProgressIndicator(
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          TextButton(
+            onPressed: () {
+              if (isPermanentlyDenied) {
+                context.push('/location-recovery');
+              } else {
+                context.push('/location-permission');
+              }
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              isPermanentlyDenied ? 'Abrir' : 'Activar',
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
                 color: Theme.of(context).colorScheme.primary,
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
-
-
 }

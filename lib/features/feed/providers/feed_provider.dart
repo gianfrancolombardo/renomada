@@ -7,13 +7,13 @@ import '../../../shared/services/feed_service.dart';
 class FeedItem {
   final Item item;
   final UserProfile owner;
-  final double distanceKm;
+  final double? distanceKm; // NULL when location is not available
   String? firstPhotoUrl;
 
   FeedItem({
     required this.item,
     required this.owner,
-    required this.distanceKm,
+    this.distanceKm,
     this.firstPhotoUrl,
   });
 
@@ -21,10 +21,13 @@ class FeedItem {
     return FeedItem(
       item: Item.fromJson(json['item']),
       owner: UserProfile.fromJson(json['owner']),
-      distanceKm: (json['distance_km'] as num).toDouble(),
+      distanceKm: json['distance_km'] != null ? (json['distance_km'] as num).toDouble() : null,
       firstPhotoUrl: json['first_photo_url'] as String?,
     );
   }
+  
+  // Check if distance is available
+  bool get hasDistance => distanceKm != null && distanceKm! > 0;
 }
 
 // Feed state
@@ -144,6 +147,32 @@ class FeedNotifier extends StateNotifier<FeedState> {
   // Refresh feed
   Future<void> refresh() async {
     await loadFeed(refresh: true);
+  }
+
+  // Load feed items without location (recent items only, max 10, no pagination)
+  Future<void> loadFeedWithoutLocation({bool refresh = false}) async {
+    state = state.copyWith(
+      items: refresh ? [] : state.items,
+      isLoading: true,
+      error: null,
+      hasMoreItems: false, // No pagination for recent items
+    );
+
+    try {
+      final newItems = await _feedService.getFeedItemsWithoutLocation();
+
+      state = state.copyWith(
+        items: newItems,
+        isLoading: false,
+        hasMoreItems: false, // Always false - max 10 items, no pagination
+        error: null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
   }
 }
 

@@ -262,7 +262,9 @@ class _FeedItemCardState extends State<FeedItemCard>
                                             ),
                                           ),
                                           Text(
-                                            '${widget.item.distanceKm.toStringAsFixed(1)} km de distancia',
+                                            widget.item.hasDistance
+                                                ? '${widget.item.distanceKm!.toStringAsFixed(1)} km de distancia'
+                                                : _formatTimeAgo(widget.item.item.createdAt),
                                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                               color: Colors.white.withOpacity(0.8),
                                             ),
@@ -527,5 +529,18 @@ class _FeedItemCardState extends State<FeedItemCard>
     );
   }
 
-
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 0) {
+      return 'Publicado hace ${difference.inDays} día${difference.inDays == 1 ? '' : 's'}';
+    } else if (difference.inHours > 0) {
+      return 'Publicado hace ${difference.inHours} hora${difference.inHours == 1 ? '' : 's'}';
+    } else if (difference.inMinutes > 0) {
+      return 'Publicado hace ${difference.inMinutes} min';
+    } else {
+      return 'Publicado ahora';
+    }
+  }
 }

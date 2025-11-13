@@ -19,6 +19,37 @@ class LocationPermissionScreen extends ConsumerStatefulWidget {
 
 class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
   bool _hasSeenExplanation = false;
+  bool _hasCheckedPermission = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Check permission status when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPermissionStatus();
+    });
+  }
+
+  Future<void> _checkPermissionStatus() async {
+    if (_hasCheckedPermission) return;
+    _hasCheckedPermission = true;
+
+    final locationService = LocationService();
+    final permission = await locationService.checkLocationPermission();
+    
+    // If permanently denied, redirect to recovery screen
+    if (permission == LocationPermissionStatus.permanentlyDenied && mounted) {
+      final logService = LocationLogService();
+      await logService.logEvent(
+        eventType: LocationEventType.permissionPermanentlyDenied,
+        action: LocationAction.checkPermission,
+        permissionStatus: permission,
+        metadata: {'source': 'location_permission_screen_init'},
+      );
+      
+      context.pushReplacement('/location-recovery');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -302,7 +333,8 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
       final permissionStatus = ref.read(locationProvider).permissionStatus;
       
       if (permissionStatus == LocationPermissionStatus.permanentlyDenied) {
-        _showPermanentlyDeniedDialog();
+        // Redirect to recovery screen instead of showing dialog
+        context.pushReplacement('/location-recovery');
       }
     }
   }
@@ -329,30 +361,4 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
     }
   }
 
-  void _showPermanentlyDeniedDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Permiso denegado'),
-        content: const Text(
-          'El permiso de ubicación fue denegado permanentemente. '
-          'Para usar ReNomada con ubicación, ve a configuración de la aplicación '
-          'y habilita el permiso de ubicación.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ref.read(locationProvider.notifier).openAppSettings();
-            },
-            child: const Text('Ir a configuración'),
-          ),
-        ],
-      ),
-    );
-  }
 }

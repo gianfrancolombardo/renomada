@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 
 /// Skeleton loader for chat list items
+/// Matches the structure of ChatCard widget
 class ChatListSkeleton extends StatelessWidget {
   final int itemCount;
 
@@ -18,70 +19,92 @@ class ChatListSkeleton extends StatelessWidget {
       itemCount: itemCount,
       itemBuilder: (context, index) {
         return Padding(
-          padding: EdgeInsets.only(bottom: 16.h),
-          child: _buildChatSkeletonItem(context),
+          padding: EdgeInsets.only(bottom: 8.h),
+          child: _buildChatSkeletonItem(context, index),
         );
       },
     );
   }
 
-  Widget _buildChatSkeletonItem(BuildContext context) {
+  Widget _buildChatSkeletonItem(BuildContext context, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.12),
-          width: 1,
-        ),
+        color: colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Avatar skeleton
+          // Avatar skeleton (matches ChatCard: radius 28 = 56x56)
           SkeletonLoader.circle(
             width: 56.w,
             height: 56.w,
           ),
-          SizedBox(width: 16.w),
+          SizedBox(width: 12.w),
+          // Content skeleton (matches ChatCard structure)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Username skeleton
-                SkeletonLoader.rectangular(
-                  width: 150.w,
-                  height: 16.h,
-                  borderRadius: BorderRadius.circular(4.r),
+                // First line: Username and timestamp
+                Row(
+                  children: [
+                    Expanded(
+                      child: SkeletonLoader.rectangular(
+                        width: double.infinity,
+                        height: 16.h,
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    // Time skeleton (small, right-aligned)
+                    SkeletonLoader.rectangular(
+                      width: 30.w,
+                      height: 12.h,
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 8.h),
-                // Last message skeleton
+                SizedBox(height: 6.h),
+                // Second line: Item title
                 SkeletonLoader.rectangular(
-                  width: 200.w,
+                  width: double.infinity,
                   height: 14.h,
                   borderRadius: BorderRadius.circular(4.r),
                 ),
+                SizedBox(height: 4.h),
+                // Third line: Last message and badge
+                Row(
+                  children: [
+                    Expanded(
+                      child: SkeletonLoader.rectangular(
+                        width: double.infinity,
+                        height: 14.h,
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    // Badge skeleton (unread count) - optional, show randomly
+                    if (index % 3 == 0)
+                      SkeletonLoader.rectangular(
+                        width: 24.w,
+                        height: 20.h,
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ),
-          SizedBox(width: 16.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Badge skeleton (unread count)
-              SkeletonLoader.rectangular(
-                width: 40.w,
-                height: 20.h,
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              SizedBox(height: 4.h),
-              // Time skeleton
-              SkeletonLoader.rectangular(
-                width: 50.w,
-                height: 12.h,
-                borderRadius: BorderRadius.circular(4.r),
-              ),
-            ],
           ),
         ],
       ),
