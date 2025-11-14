@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart' as permission_handler;
 import 'location_log_service.dart';
@@ -285,11 +286,48 @@ class LocationService {
   }
 
   // Open app settings
-  Future<void> openAppSettings() async {
+  // Returns true if permission was granted, false otherwise
+  Future<bool> openAppSettings() async {
     try {
       await _logService.logSettingsOpened('app');
-      // Use the function from permission_handler package
+      
+      // On web, openAppSettings() doesn't work - permissions are handled by the browser
+      // Instead, we'll try to request permission directly
+      if (kIsWeb) {
+        // Check current permission status first
+        final currentPermission = await checkLocationPermission();
+        
+        // On web, try to request permission directly
+        // The browser will show its own permission prompt
+        final permission = await requestLocationPermission();
+        
+        if (permission == LocationPermissionStatus.granted) {
+          return true;
+        }
+        
+        // If still denied, log that user needs to change browser settings manually
+        await _logService.logEvent(
+          eventType: LocationEventType.appSettingsOpened,
+          action: LocationAction.openAppSettings,
+          errorCode: 'web_permission_denied',
+          errorMessage: 'On web, users must grant location permission through browser settings',
+          metadata: {
+            'platform': 'web',
+            'previous_status': _permissionStatusToString(currentPermission),
+            'new_status': _permissionStatusToString(permission),
+            'note': 'Browser settings must be changed manually - no programmatic way to open them',
+          },
+        );
+        
+        // Return false to indicate permission was not granted
+        return false;
+      }
+      
+      // On Android/iOS, use the function from permission_handler package
       await permission_handler.openAppSettings();
+      // On native platforms, we can't know if user granted permission until they return
+      // So we return false and let the app check when user returns
+      return false;
     } catch (e) {
       await _logService.logEvent(
         eventType: LocationEventType.appSettingsOpened,
@@ -297,7 +335,23 @@ class LocationService {
         errorCode: 'open_failed',
         errorMessage: e.toString(),
       );
+      return false;
     }
+  }
+  
+  // Get browser-specific instructions for enabling location permission
+  String getWebBrowserInstructions() {
+    if (!kIsWeb) return '';
+    
+    // Provide instructions that work for most browsers
+    return 'Para habilitar la ubicación en tu navegador:\n\n'
+        '1. Busca el ícono de candado o información en la barra de direcciones\n'
+        '2. Haz clic en "Configuración del sitio" o "Site settings"\n'
+        '3. Busca "Ubicación" o "Location"\n'
+        '4. Selecciona "Permitir" o "Allow"\n'
+        '5. Recarga la página\n\n'
+        'En Chrome móvil: Menú (⋮) → Configuración → Configuración del sitio → Ubicación\n'
+        'En Safari móvil: Configuración → Safari → Ubicación';
   }
 
   // Check if we can request permission (not permanently denied)

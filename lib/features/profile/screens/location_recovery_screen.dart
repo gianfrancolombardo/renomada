@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -278,6 +279,7 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 28.w,
@@ -292,12 +294,15 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
                   size: 18.sp,
                 ),
               ),
-              SizedBox(width: 10.w),
-              Text(
-                'Cómo habilitar la ubicación',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
+                  kIsWeb ? 'Cómo habilitar la ubicación en el navegador' : 'Cómo habilitar la ubicación',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.2,
+                  ),
                 ),
               ),
             ],
@@ -305,35 +310,67 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
           
           SizedBox(height: 16.h),
           
-          _buildStep(
-            1,
-            'Presiona "Abrir configuración"',
-            'Te llevaremos a la configuración de la app',
-          ),
-          
-          SizedBox(height: 12.h),
-          
-          _buildStep(
-            2,
-            'Busca "Ubicación" o "Location"',
-            'En la lista de permisos de ReNomada',
-          ),
-          
-          SizedBox(height: 12.h),
-          
-          _buildStep(
-            3,
-            'Selecciona "Permitir siempre"',
-            'O "Permitir mientras usas la app"',
-          ),
-          
-          SizedBox(height: 12.h),
-          
-          _buildStep(
-            4,
-            'Vuelve a la app',
-            'Tu ubicación se activará automáticamente',
-          ),
+          if (kIsWeb) ...[
+            _buildStep(
+              1,
+              'Presiona "Abrir configuración"',
+              'Intentaremos solicitar el permiso directamente',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              2,
+              'Si aparece el diálogo del navegador',
+              'Selecciona "Permitir" o "Allow"',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              3,
+              'Si no aparece el diálogo',
+              'Ve a la configuración del navegador:\nMenú → Configuración → Privacidad → Ubicación',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              4,
+              'Habilita la ubicación para este sitio',
+              'Luego recarga la página',
+            ),
+          ] else ...[
+            _buildStep(
+              1,
+              'Presiona "Abrir configuración"',
+              'Te llevaremos a la configuración de la app',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              2,
+              'Busca "Ubicación" o "Location"',
+              'En la lista de permisos de ReNomada',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              3,
+              'Selecciona "Permitir siempre"',
+              'O "Permitir mientras usas la app"',
+            ),
+            
+            SizedBox(height: 12.h),
+            
+            _buildStep(
+              4,
+              'Vuelve a la app',
+              'Tu ubicación se activará automáticamente',
+            ),
+          ],
         ],
       ),
     );
@@ -343,6 +380,7 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Number badge - fixed width
         Container(
           width: 24.w,
           height: 24.w,
@@ -362,23 +400,26 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
           ),
         ),
         SizedBox(width: 12.w),
+        // Content - flexible width
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 title,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.onSurface,
+                  height: 1.3,
                 ),
               ),
-              SizedBox(height: 2.h),
+              SizedBox(height: 4.h),
               Text(
                 description,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.2,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -423,7 +464,7 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        'Abrir configuración',
+                        kIsWeb ? 'Solicitar permiso de ubicación' : 'Abrir configuración',
                         style: TextStyle(
                           fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
@@ -484,9 +525,101 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
     final logService = LocationLogService();
     await logService.logSettingsOpened('app');
     
-    await ref.read(locationProvider.notifier).openAppSettings();
+    final permissionGranted = await ref.read(locationProvider.notifier).openAppSettings();
     
-    // Note: We'll check permission when user returns via didChangeAppLifecycleState
+    // On web, if permission was not granted, show instructions dialog
+    if (kIsWeb && !permissionGranted && mounted) {
+      final locationService = LocationService();
+      final currentPermission = await locationService.checkLocationPermission();
+      
+      // Only show dialog if permission is denied or permanently denied
+      if (currentPermission == LocationPermissionStatus.denied || 
+          currentPermission == LocationPermissionStatus.permanentlyDenied) {
+        _showWebPermissionInstructionsDialog();
+      }
+    }
+    
+    // Note: On native platforms, we'll check permission when user returns via didChangeAppLifecycleState
+  }
+  
+  void _showWebPermissionInstructionsDialog() {
+    final locationService = LocationService();
+    final instructions = locationService.getWebBrowserInstructions();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              LucideIcons.info,
+              color: Theme.of(context).colorScheme.primary,
+              size: 24.sp,
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                'Ubicación bloqueada',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tu navegador tiene bloqueada la ubicación para este sitio. Para habilitarla, sigue estos pasos:',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  instructions,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Entendido',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleSkip() {

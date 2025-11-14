@@ -380,10 +380,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 
   Widget _buildBody(feedState, locationState, profileState) {
+    // Don't show banner during initial loading (when skeleton is shown)
+    final shouldShowBanner = (!locationState.isPermissionGranted || !locationState.hasLocation) &&
+        !_isInitializing &&
+        !(feedState.isLoading && feedState.items.isEmpty);
+    
     return Column(
       children: [
-        // Banner informativo cuando no hay ubicación
-        if (!locationState.isPermissionGranted || !locationState.hasLocation)
+        // Banner informativo cuando no hay ubicación (oculto durante carga inicial)
+        if (shouldShowBanner)
           _buildLocationInfoBanner(locationState),
         
         // Radius selector - now toggleable

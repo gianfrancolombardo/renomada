@@ -348,8 +348,9 @@ class LocationNotifier extends StateNotifier<LocationState> {
   }
 
   // Open app settings
-  Future<void> openAppSettings() async {
-    await _locationService.openAppSettings();
+  // Returns true if permission was granted (web only), false otherwise
+  Future<bool> openAppSettings() async {
+    return await _locationService.openAppSettings();
   }
 
   // Get distance to a point
