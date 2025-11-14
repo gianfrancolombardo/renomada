@@ -32,13 +32,23 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
   bool _isNavigatingToChat = false;
+  bool _isInitializing = true; // Track initial loading phase
 
   @override
   void initState() {
     super.initState();
     // Load feed when screen is first displayed
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeFeed();
+      _initializeFeed().then((_) {
+        // Mark initialization as complete after a short delay to ensure smooth transition
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            setState(() {
+              _isInitializing = false;
+            });
+          }
+        });
+      });
     });
   }
 
@@ -397,19 +407,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 
   Widget _buildContent(FeedState feedState, LocationState locationState) {
+    // Show skeleton during initial loading phase (checking location + loading feed)
+    if (_isInitializing || (feedState.isLoading && feedState.items.isEmpty)) {
+      return const FeedLoadingState();
+    }
+
     // If permission is granted but no location, show loading while trying to get it
     if (locationState.isPermissionGranted && !locationState.hasLocation) {
       if (locationState.isLoading) {
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Obteniendo ubicación...'),
-            ],
-          ),
-        );
+        return const FeedLoadingState();
       }
       // If not loading and no location, try to get it automatically
       WidgetsBinding.instance.addPostFrameCallback((_) {
