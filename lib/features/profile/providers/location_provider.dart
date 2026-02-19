@@ -11,6 +11,7 @@ class LocationState {
   final String? error;
   final LocationPermissionStatus permissionStatus;
   final bool hasRequestedPermission;
+  final bool isManual;
 
   const LocationState({
     this.currentPosition,
@@ -18,6 +19,7 @@ class LocationState {
     this.error,
     this.permissionStatus = LocationPermissionStatus.denied,
     this.hasRequestedPermission = false,
+    this.isManual = false,
   });
 
   LocationState copyWith({
@@ -26,6 +28,7 @@ class LocationState {
     String? error,
     LocationPermissionStatus? permissionStatus,
     bool? hasRequestedPermission,
+    bool? isManual,
   }) {
     return LocationState(
       currentPosition: currentPosition ?? this.currentPosition,
@@ -33,6 +36,7 @@ class LocationState {
       error: error,
       permissionStatus: permissionStatus ?? this.permissionStatus,
       hasRequestedPermission: hasRequestedPermission ?? this.hasRequestedPermission,
+      isManual: isManual ?? this.isManual,
     );
   }
 
@@ -377,6 +381,32 @@ class LocationNotifier extends StateNotifier<LocationState> {
       radiusKm,
     );
   }
+
+  // Set manual location
+  Future<void> setManualLocation(double latitude, double longitude) async {
+    // Create a Position object from the manual coordinates
+    final position = Position(
+      latitude: latitude,
+      longitude: longitude,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      heading: 0,
+      speed: 0,
+      speedAccuracy: 0,
+      altitudeAccuracy: 0,
+      headingAccuracy: 0,
+    );
+
+    state = state.copyWith(
+      currentPosition: position,
+      isManual: true,
+      error: null,
+    );
+    
+    // We don't save manual location to profile to avoid polluting user's real location history
+    // But we could if needed. For now, treating it as a session-only override.
+  }
 }
 
 // Providers
@@ -401,6 +431,11 @@ final isLocationLoadingProvider = Provider<bool>((ref) {
   return ref.watch(locationProvider).isLoading;
 });
 
+
 final locationErrorProvider = Provider<String?>((ref) {
   return ref.watch(locationProvider).error;
+});
+
+final isManualLocationProvider = Provider<bool>((ref) {
+  return ref.watch(locationProvider).isManual;
 });

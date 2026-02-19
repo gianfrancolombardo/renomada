@@ -13,6 +13,7 @@ import '../widgets/feed_error_state.dart';
 import '../../profile/providers/location_provider.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../../../shared/services/location_service.dart';
+import '../widgets/manual_location_selector.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   final bool isRadiusSelectorVisible;
@@ -75,9 +76,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       }
     }
     
-    // If no permission, load recent items without location
+    // If no permission, we don't load anything yet. 
+    // The UI will show the ManualLocationSelector.
     if (!locationState.isPermissionGranted) {
-      await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
+      // await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
+      // We do nothing here, letting the UI show the manual selector
     }
   }
 
@@ -101,7 +104,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       }
     } else {
       // No permission, load recent items
-      await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
+      // await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
     }
   }
 
@@ -424,17 +427,26 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       }
       // If not loading and no location, try to get it automatically
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ref.read(locationProvider.notifier).getCurrentLocation();
-        }
+        // Only try once to avoid loops
+        // The check is done in _initializeFeed
       });
-      // Show recent items while trying to get location
-      return _buildFeedContent(feedState, locationState);
+      
+      // If we are here, it means auto-location failed even with permission
+      // Show manual selector
+      return ManualLocationSelector(
+        onLocationSelected: () {
+          ref.read(feedProvider.notifier).loadFeed(refresh: true);
+        },
+      );
     }
 
-    // If no permission, show recent items (feed limitado)
+    // If no permission, show manual selector instead of recent items
     if (!locationState.isPermissionGranted) {
-      return _buildFeedContent(feedState, locationState);
+      return ManualLocationSelector(
+        onLocationSelected: () {
+          ref.read(feedProvider.notifier).loadFeed(refresh: true);
+        },
+      );
     }
 
     // Show feed content (with location)
