@@ -5,9 +5,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../widgets/main_layout.dart';
 import '../providers/location_name_provider.dart';
 import '../../features/feed/screens/feed_screen.dart';
+import '../../features/feed/providers/feed_provider.dart';
 import '../../features/items/screens/my_items_screen.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/profile/providers/location_provider.dart';
 
 class FeedMainScreen extends ConsumerStatefulWidget {
   const FeedMainScreen({super.key});
@@ -48,14 +50,18 @@ class _FeedMainScreenState extends ConsumerState<FeedMainScreen> {
       title: 'Explorar',
       subtitle: locationName,
       currentIndex: 0,
+      onSubtitleTap: () {
+        ref.read(locationProvider.notifier).clearLocation();
+        ref.read(feedProvider.notifier).reset();
+      },
       actions: [
         // Radius selector toggle button
         IconButton(
           onPressed: _toggleRadiusSelector,
           icon: Icon(
-            LucideIcons.settings,
+            LucideIcons.slidersHorizontal,
             color: Theme.of(context).colorScheme.onSurface,
-            size: 22.sp,
+            size: 20.sp,
           ),
         ),
       ],

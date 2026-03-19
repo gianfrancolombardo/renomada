@@ -3,6 +3,37 @@ import '../../../shared/models/item.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/services/feed_service.dart';
 
+// Repository interface to make feed logic testable.
+abstract class FeedRepository {
+  Future<List<FeedItem>> getFeedItems({
+    required double radiusKm,
+    int page,
+    int limit,
+  });
+
+  Future<List<FeedItem>> getFeedItemsWithoutLocation();
+}
+
+class SupabaseFeedRepository implements FeedRepository {
+  final FeedService _feedService;
+
+  SupabaseFeedRepository(this._feedService);
+
+  @override
+  Future<List<FeedItem>> getFeedItems({
+    required double radiusKm,
+    int page = 0,
+    int limit = 10,
+  }) {
+    return _feedService.getFeedItems(radiusKm: radiusKm, page: page, limit: limit);
+  }
+
+  @override
+  Future<List<FeedItem>> getFeedItemsWithoutLocation() {
+    return _feedService.getFeedItemsWithoutLocation();
+  }
+}
+
 // Feed item with owner information
 class FeedItem {
   final Item item;
@@ -72,9 +103,15 @@ class FeedState {
 
 // Feed notifier
 class FeedNotifier extends StateNotifier<FeedState> {
+  final FeedRepository _repository;
   final FeedService _feedService;
 
-  FeedNotifier(this._feedService) : super(const FeedState());
+  FeedNotifier({
+    required FeedRepository repository,
+    required FeedService feedService,
+  })  : _repository = repository,
+        _feedService = feedService,
+        super(const FeedState());
 
   // Expose service for external use
   FeedService get feedService => _feedService;
@@ -94,19 +131,18 @@ class FeedNotifier extends StateNotifier<FeedState> {
     }
 
     try {
-      final newItems = await _feedService.getFeedItems(
+      final newItems = await _repository.getFeedItems(
         radiusKm: state.selectedRadiusKm,
         page: refresh ? 0 : state.currentPage,
+        limit: 10,
       );
 
-      final updatedItems = refresh 
-          ? newItems 
-          : [...state.items, ...newItems];
+      final updatedItems = refresh ? newItems : [...state.items, ...newItems];
 
       state = state.copyWith(
         items: updatedItems,
         isLoading: false,
-        hasMoreItems: newItems.length >= 10, // ✨ Changed: 10 items per page (matching default limit)
+        hasMoreItems: newItems.length >= 10,
         currentPage: refresh ? 1 : state.currentPage + 1,
         error: null,
       );
@@ -131,6 +167,26 @@ class FeedNotifier extends StateNotifier<FeedState> {
 
     state = state.copyWith(selectedRadiusKm: radiusKm);
     await loadFeed(refresh: true);
+  }
+
+  // Clear feed synchronously (used for UI transitions like location change)
+  void clear() {
+    state = state.copyWith(
+      items: [],
+      isLoading: true,
+      error: null,
+    );
+  }
+
+  // Reset feed to an idle empty state (used when location is cleared)
+  void reset() {
+    state = const FeedState(items: [], isLoading: false, error: null);
+  }
+
+  // Stop loading (keeps current items)
+  void stopLoading() {
+    if (!state.isLoading) return;
+    state = state.copyWith(isLoading: false);
   }
 
   // Remove item from feed (after pass)
@@ -159,7 +215,7 @@ class FeedNotifier extends StateNotifier<FeedState> {
     );
 
     try {
-      final newItems = await _feedService.getFeedItemsWithoutLocation();
+      final newItems = await _repository.getFeedItemsWithoutLocation();
 
       state = state.copyWith(
         items: newItems,
@@ -178,7 +234,9 @@ class FeedNotifier extends StateNotifier<FeedState> {
 
 // Providers
 final feedProvider = StateNotifierProvider<FeedNotifier, FeedState>((ref) {
-  return FeedNotifier(FeedService());
+  final feedService = FeedService();
+  final repository = SupabaseFeedRepository(feedService);
+  return FeedNotifier(repository: repository, feedService: feedService);
 });
 
 // Convenience providers

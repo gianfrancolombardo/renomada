@@ -384,6 +384,8 @@ class LocationNotifier extends StateNotifier<LocationState> {
 
   // Set manual location
   Future<void> setManualLocation(double latitude, double longitude) async {
+    print('📍 [LocationProvider] Saving manual location to profile: lat=$latitude, lon=$longitude');
+
     // Create a Position object from the manual coordinates
     final position = Position(
       latitude: latitude,
@@ -398,14 +400,100 @@ class LocationNotifier extends StateNotifier<LocationState> {
       headingAccuracy: 0,
     );
 
-    state = state.copyWith(
-      currentPosition: position,
-      isManual: true,
+    // Same rounding as ProfileService.updateLocation() (~50m precision)
+    double _roundCoordinate(double coordinate) {
+      return (coordinate * 2000).round() / 2000;
+    }
+
+    final expectedRoundedLat = _roundCoordinate(latitude);
+    final expectedRoundedLon = _roundCoordinate(longitude);
+
+    // Save manual location to profile. 
+    // This is required because the backend RPC (feed_items_by_radius) uses the profile's last_location.
+    try {
+      await _profileService.updateLocation(
+        latitude: latitude,
+        longitude: longitude,
+      );
+      print('✅ [LocationProvider] Manual location saved to profile');
+
+      // Strict verification: ensure `profiles.last_location` is persisted and matches
+      // before letting the feed reload. This prevents "stale location" repeats.
+      final verifyDeadline = DateTime.now().add(const Duration(seconds: 3));
+      Map<String, dynamic>? lastLocation;
+      while (DateTime.now().isBefore(verifyDeadline)) {
+        final profile = await _profileService.getCurrentProfile();
+        lastLocation = profile?.lastLocation;
+        final coords = lastLocation?['coordinates'];
+
+        if (coords is List && coords.length >= 2) {
+          final lon = (coords[0] as num).toDouble();
+          final lat = (coords[1] as num).toDouble();
+          final roundedLat = _roundCoordinate(lat);
+          final roundedLon = _roundCoordinate(lon);
+
+          print('📍 [LocationProvider] Verified stored last_location attempt: '
+              'expected(lat=$expectedRoundedLat, lon=$expectedRoundedLon) '
+              'got(lat=$roundedLat, lon=$roundedLon)');
+
+          if ((roundedLat - expectedRoundedLat).abs() < 0.0001 &&
+              (roundedLon - expectedRoundedLon).abs() < 0.0001) {
+            break;
+          }
+        }
+
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+
+      final coords = lastLocation?['coordinates'];
+      if (coords is! List || coords.length < 2) {
+        state = state.copyWith(
+          error: 'No se pudo verificar la ubicación guardada. Inténtalo de nuevo.',
+        );
+        throw Exception('Location verification failed (missing coordinates)');
+      }
+
+      final lon = (coords[0] as num).toDouble();
+      final lat = (coords[1] as num).toDouble();
+      final roundedLat = _roundCoordinate(lat);
+      final roundedLon = _roundCoordinate(lon);
+
+      if ((roundedLat - expectedRoundedLat).abs() >= 0.0001 ||
+          (roundedLon - expectedRoundedLon).abs() >= 0.0001) {
+        state = state.copyWith(
+          error: 'La ubicación no se guardó correctamente. Inténtalo de nuevo.',
+        );
+        throw Exception(
+          'Location verification failed (mismatch): '
+          'expected lat=$expectedRoundedLat lon=$expectedRoundedLon, '
+          'got lat=$roundedLat lon=$roundedLon',
+        );
+      }
+
+      state = state.copyWith(
+        currentPosition: position,
+        isManual: true,
+        error: null,
+      );
+    } catch (e) {
+      print('❌ [LocationProvider] Failed to save manual location: $e');
+      state = state.copyWith(
+        error: 'No se pudo guardar tu ubicación. Inténtalo de nuevo.',
+      );
+      rethrow;
+    }
+  }
+
+  // Clear current location (forces to show manual selector)
+  void clearLocation() {
+    state = LocationState(
+      permissionStatus: state.permissionStatus,
+      hasRequestedPermission: state.hasRequestedPermission,
+      currentPosition: null,
+      isManual: false,
+      isLoading: false,
       error: null,
     );
-    
-    // We don't save manual location to profile to avoid polluting user's real location history
-    // But we could if needed. For now, treating it as a session-only override.
   }
 }
 

@@ -7,6 +7,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String? subtitle;
   final List<Widget>? actions;
   final Widget? leading;
+  final VoidCallback? onSubtitleTap;
 
   const AppHeader({
     super.key,
@@ -14,6 +15,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.subtitle,
     this.actions,
     this.leading,
+    this.onSubtitleTap,
   });
 
   @override
@@ -30,44 +32,59 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       centerTitle: false,
       automaticallyImplyLeading: false,
       leading: leading,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            SizedBox(height: 2.h),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  LucideIcons.mapPin,
-                  size: 12.sp,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+      titleSpacing: 16.w, // Ensure consistent padding on the edges
+      title: subtitle != null && subtitle!.isNotEmpty
+          ? GestureDetector(
+              onTap: onSubtitleTap,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.h), // Touch area
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start, // Left aligned
+                  children: [
+                    Text(
+                      'Buscando en',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                    SizedBox(width: 6.w),
+                    Flexible(
+                      child: Text(
+                        '$subtitle',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary, // Primary color for emphasis
+                          fontWeight: FontWeight.w700, // Stronger weight
+                          fontSize: 14.sp,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Icon(
+                      LucideIcons.chevronDown,
+                      size: 14.sp,
+                      color: Theme.of(context).colorScheme.primary, // Match the emphasis color
+                    ),
+                  ],
                 ),
-                SizedBox(width: 4.w),
-                Text(
-                  '$subtitle',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: 12.sp,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+              ),
+            )
+          : Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
-          ],
-        ],
-      ),
       actions: [
-        if (actions != null) ...actions!,
+        if (actions != null) ...[
+          ...actions!,
+          SizedBox(width: 8.w), // Extra padding on the right edge
+        ],
       ],
     );
   }

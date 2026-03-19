@@ -8,6 +8,10 @@ class AppConstants {
   static const double minSearchRadiusKm = 1.0;
   static const double maxSearchRadiusKm = 50.0;
   static const int locationFreshnessHours = 24;
+
+  /// Days of owner activity to filter nearby feed. Applied to item OWNER's last_seen_at.
+  /// null = no filter (show all, best for few items). 30 = last 30 days. 7 = last week.
+  static const int? feedFreshnessDays = null;
   
   // Image Constraints
   static const int maxPhotosPerItem = 3;

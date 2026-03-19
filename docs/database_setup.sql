@@ -342,13 +342,15 @@ create policy "Owners can list their item photos"
 -- Drop existing function first
 drop function if exists public.feed_items_by_radius(double precision,double precision,double precision, integer);
 drop function if exists public.feed_items_by_radius(uuid, float, integer, integer);
+drop function if exists public.feed_items_by_radius(uuid, float, integer, integer, integer);
 
 -- Create the final version of the function
 create or replace function public.feed_items_by_radius(
   p_user_id uuid,
   p_radius_km float default 10.0,
   p_page_offset integer default 0,
-  p_page_limit integer default 20
+  p_page_limit integer default 20,
+  p_freshness_days integer default null
 )
 returns table(
   -- Item fields
@@ -409,7 +411,7 @@ begin
         user_location::geography,
         p_radius_km * 1000
       )
-      and p.last_seen_at > now() - interval '7 days'
+      and (p_freshness_days is null or p.last_seen_at > now() - (p_freshness_days || ' days')::interval)
     order by distance_km asc
     limit 50
   ),
@@ -463,11 +465,11 @@ end;
 $$;
 
 -- Grant execute permissions
-revoke all on function public.feed_items_by_radius(uuid, float, integer, integer) from public;
-grant execute on function public.feed_items_by_radius(uuid, float, integer, integer) to authenticated;
+revoke all on function public.feed_items_by_radius(uuid, float, integer, integer, integer) from public;
+grant execute on function public.feed_items_by_radius(uuid, float, integer, integer, integer) to authenticated;
 
 -- Add comment
-comment on function public.feed_items_by_radius is 'Obtiene items del feed filtrados por radio de distancia desde la ubicación del usuario';
+comment on function public.feed_items_by_radius is 'Obtiene items del feed filtrados por radio. p_freshness_days: null=sin filtro, N=días de last_seen_at del owner.';
 
 -- ===== 6. UTILITY FUNCTIONS =====
 

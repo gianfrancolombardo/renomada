@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/constants/app_constants.dart';
 import '../models/item.dart';
 import '../models/user_profile.dart';
 import '../../features/feed/providers/feed_provider.dart';
@@ -175,15 +177,41 @@ class FeedService {
       
       print('👤 [FeedService] User authenticated: ${user.id}');
 
+      // Log the location actually used by the RPC: profiles.last_location.
+      // feed_items_by_radius only receives p_user_id, so the backend reads last_location internally.
+      try {
+        final profile = await SupabaseConfig.from('profiles')
+            .select('last_location')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        final raw = profile?['last_location'];
+        final parsed = _parseLastLocationForLog(raw);
+        if (parsed != null) {
+          print('📍 [FeedService] Using profile last_location: lat=${parsed['lat']} lon=${parsed['lon']} (radius=${radiusKm}km)');
+        } else if (raw != null) {
+          print('📍 [FeedService] Using profile last_location (unparsed): $raw (radius=${radiusKm}km)');
+        } else {
+          print('📍 [FeedService] profiles.last_location is null (radius=${radiusKm}km)');
+        }
+      } catch (e) {
+        // Logging only; don't fail the feed.
+        print('⚠️ [FeedService] Could not log last_location: $e');
+      }
+
       // Call the RPC function with user_id (more efficient)
       print('🚀 [FeedService] Calling RPC function: feed_items_by_radius');
       
-      final response = await SupabaseConfig.rpc('feed_items_by_radius', {
+      final params = <String, dynamic>{
         'p_user_id': user.id,
         'p_radius_km': radiusKm,
         'p_page_offset': page * limit,
         'p_page_limit': limit,
-      });
+      };
+      if (AppConstants.feedFreshnessDays != null) {
+        params['p_freshness_days'] = AppConstants.feedFreshnessDays;
+      }
+      final response = await SupabaseConfig.rpc('feed_items_by_radius', params);
       
       print('📦 [FeedService] RPC response received: ${response?.length ?? 0} items');
 
@@ -270,6 +298,56 @@ class FeedService {
       print('🔍 [FeedService] Error type: ${e.runtimeType}');
       throw Exception('Error al cargar el feed: $e');
     }
+  }
+
+  Map<String, double>? _parseLastLocationForLog(dynamic raw) {
+    if (raw == null) return null;
+
+    if (raw is Map) {
+      final coords = raw['coordinates'];
+      if (coords is List && coords.length >= 2) {
+        final lon = (coords[0] as num).toDouble();
+        final lat = (coords[1] as num).toDouble();
+        return {'lat': lat, 'lon': lon};
+      }
+    }
+
+    if (raw is String) {
+      // Text: POINT(lon lat) or SRID=...;POINT(lon lat)
+      final match = RegExp(r'POINT\(([-\d.]+)\s+([-\d.]+)\)').firstMatch(raw);
+      if (match != null) {
+        final lon = double.tryParse(match.group(1) ?? '');
+        final lat = double.tryParse(match.group(2) ?? '');
+        if (lon != null && lat != null) return {'lat': lat, 'lon': lon};
+      }
+
+      // WKB/EWKB hex: endianness byte + type + srid + lon + lat (double)
+      final trimmed = raw.trim();
+      final isHex = RegExp(r'^[0-9a-fA-F]+$').hasMatch(trimmed) && trimmed.length >= 16;
+      if (isHex) {
+        try {
+          final bytes = <int>[];
+          for (int i = 0; i < trimmed.length; i += 2) {
+            bytes.add(int.parse(trimmed.substring(i, i + 2), radix: 16));
+          }
+          if (bytes.length < 1 + 4 + 4 + 8 + 8) return null;
+
+          final data = ByteData.sublistView(Uint8List.fromList(bytes));
+          final endianByte = data.getUint8(0);
+          final littleEndian = endianByte == 1;
+
+          // Offsets (EWKB Point): 1 byte order + 4 bytes type + 4 bytes SRID = 9 bytes header
+          final lon = data.getFloat64(9, littleEndian ? Endian.little : Endian.big);
+          final lat = data.getFloat64(17, littleEndian ? Endian.little : Endian.big);
+
+          if (lat.isFinite && lon.isFinite) return {'lat': lat, 'lon': lon};
+        } catch (_) {
+          // best-effort logging only
+        }
+      }
+    }
+
+    return null;
   }
 
   /// ✨ OPTIMIZATION: Batch process signed URLs to reduce API calls

@@ -9,6 +9,7 @@ class MainLayout extends StatelessWidget {
   final int currentIndex;
   final List<Widget>? actions;
   final Widget? leading;
+  final VoidCallback? onSubtitleTap;
 
   const MainLayout({
     super.key,
@@ -18,6 +19,7 @@ class MainLayout extends StatelessWidget {
     required this.currentIndex,
     this.actions,
     this.leading,
+    this.onSubtitleTap,
   });
 
   @override
@@ -29,6 +31,7 @@ class MainLayout extends StatelessWidget {
         subtitle: subtitle,
         actions: actions,
         leading: leading,
+        onSubtitleTap: onSubtitleTap,
       ),
       body: child,
       bottomNavigationBar: BottomNavigation(

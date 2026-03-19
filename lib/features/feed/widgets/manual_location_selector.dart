@@ -6,7 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:http/http.dart' as http;
 import '../../profile/providers/location_provider.dart';
-
+import '../providers/feed_provider.dart';
 class ManualLocationSelector extends ConsumerStatefulWidget {
   final VoidCallback onLocationSelected;
 
@@ -98,17 +98,26 @@ class _ManualLocationSelectorState extends ConsumerState<ManualLocationSelector>
       _isSelecting = true;
     });
 
+    // Cache notifiers before awaiting to avoid "ref after dispose" issues.
+    final feedNotifier = ref.read(feedProvider.notifier);
+    final locationNotifier = ref.read(locationProvider.notifier);
+
     try {
       final lat = double.parse(location['lat'].toString());
       final lon = double.parse(location['lon'].toString());
+      final displayName = (location['display_name'] ?? location['name'] ?? 'unknown').toString();
+      print('📍 [ManualLocationSelector] Manual location selected: '
+          'name=$displayName lat=$lat lon=$lon');
 
-      await ref.read(locationProvider.notifier).setManualLocation(lat, lon);
-      
-      // Feedback delay
-      await Future.delayed(const Duration(milliseconds: 300));
-      
+      // Instantly show skeleton loader
+      feedNotifier.clear();
+
+      await locationNotifier.setManualLocation(lat, lon);
+
+      print('🚀 [ManualLocationSelector] Triggering feed reload after manual location save');
       widget.onLocationSelected();
     } catch (e) {
+      feedNotifier.stopLoading();
       if (mounted) {
         setState(() {
           _isSelecting = false;
@@ -214,7 +223,7 @@ class _ManualLocationSelectorState extends ConsumerState<ManualLocationSelector>
             
             // Results List
             Expanded(
-              child: resultsToShow.isEmpty && _searchController.text.length > 2 && !_isSearching
+              child: _searchController.text.length > 2 && !_isSearching && resultsToShow.isEmpty
                   ? _buildNoResults()
                   : _buildResultsList(resultsToShow),
             ),
@@ -262,7 +271,7 @@ class _ManualLocationSelectorState extends ConsumerState<ManualLocationSelector>
             ),
             trailing: _isSelecting && _searchController.text.isNotEmpty // Simple check to show loading on right one
                 ? SizedBox(width: 20.w, height: 20.w, child: const CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(LucideIcons.chevronRight, size: 16.sp),
+                : Icon(LucideIcons.chevronRight, size: 16.sp),
           ),
         );
       },

@@ -9,6 +9,7 @@ class FeedItemCard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onSwipeLeft;
   final VoidCallback? onSwipeRight;
+  final bool showHintAnimation;
 
   const FeedItemCard({
     super.key,
@@ -16,6 +17,7 @@ class FeedItemCard extends StatefulWidget {
     this.onTap,
     this.onSwipeLeft,
     this.onSwipeRight,
+    this.showHintAnimation = false,
   });
 
   @override
@@ -23,10 +25,12 @@ class FeedItemCard extends StatefulWidget {
 }
 
 class _FeedItemCardState extends State<FeedItemCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _hintAnimationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
+  late Animation<double> _hintAnimation;
   double _dragOffset = 0;
 
   @override
@@ -52,10 +56,58 @@ class _FeedItemCardState extends State<FeedItemCard>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
+
+    _hintAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _hintAnimation = TweenSequence<double>([
+      // Swipe Left (No Gracias) first with enough distance to trigger the red badge
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: -100.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 35,
+      ),
+      // Bounce back to center and overshoot to Right (Lo Quiero) to trigger the green badge
+      TweenSequenceItem(
+        tween: Tween(begin: -100.0, end: 120.0).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 45,
+      ),
+      // Settle back to center
+      TweenSequenceItem(
+        tween: Tween(begin: 120.0, end: 0.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 20,
+      ),
+    ]).animate(_hintAnimationController);
+
+    _hintAnimationController.addListener(() {
+      setState(() {
+        _dragOffset = _hintAnimation.value;
+      });
+      // Fallback screenWidth if context not ready usually doesn't happen because animation starts after delay,
+      // but we use 400 as a safe fallback just in case.
+      double screenWidth = 400.0;
+      if (mounted) {
+        screenWidth = MediaQuery.of(context).size.width;
+      }
+      final progress = (_dragOffset.abs() / screenWidth).clamp(0.0, 1.0);
+      _animationController.value = progress;
+    });
+
+    if (widget.showHintAnimation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            _hintAnimationController.forward();
+          }
+        });
+      });
+    }
   }
 
   @override
   void dispose() {
+    _hintAnimationController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -321,55 +373,58 @@ class _FeedItemCardState extends State<FeedItemCard>
                               builder: (context, child) {
                                 final screenWidth = MediaQuery.of(context).size.width;
                                 final progress = (_dragOffset / screenWidth).clamp(0.0, 1.0);
-                                // Opacity reaches 90% at 30% movement (0.3 progress)
-                                final opacity = progress < 0.3 ? (progress / 0.3) * 0.9 : 0.9;
-                                final scale = 0.7 + (0.3 * progress);
-                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0); // Text fades from 10% to 40%
+                                final scale = 0.8 + (0.2 * progress);
+                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0);
+                                final bgOpacity = (progress * 1.5).clamp(0.0, 0.95);
                                 
-                                return Opacity(
-                                  opacity: opacity,
-                                  child: Transform.scale(
-                                    scale: scale,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16.r),
-                                        color: Colors.green.withOpacity(0.15 * progress),
-                                        border: Border.all(
-                                          color: Colors.green.withOpacity(0.7 * progress),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Center(
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(top: 40.h, left: 30.w),
+                                    child: Transform.rotate(
+                                      angle: -0.2, // Tilted left
+                                      child: Transform.scale(
+                                        scale: scale,
                                         child: Opacity(
                                           opacity: textOpacity,
                                           child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                                             decoration: BoxDecoration(
-                                              color: Colors.green.withOpacity(0.95),
-                                              borderRadius: BorderRadius.circular(16.r),
+                                              color: Colors.green.withOpacity(bgOpacity),
+                                              borderRadius: BorderRadius.circular(20.r),
+                                              border: Border.all(
+                                                color: Colors.green.withOpacity((bgOpacity + 0.3).clamp(0.0, 1.0)),
+                                                width: 3,
+                                              ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.green.withOpacity(0.4 * progress),
-                                                  blurRadius: 12,
-                                                  offset: const Offset(0, 6),
+                                                  color: Colors.green.withOpacity(0.3 * progress),
+                                                  blurRadius: 16,
+                                                  offset: const Offset(0, 8),
                                                 ),
                                               ],
                                             ),
-                                            child: Text(
-                                              '¡Lo quiero!',
-                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 22.sp,
-                                                letterSpacing: 0.8,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black.withOpacity(0.3),
-                                                    blurRadius: 4,
-                                                    offset: const Offset(0, 2),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  LucideIcons.checkCircle,
+                                                  color: Colors.white,
+                                                  size: 36.sp,
+                                                ),
+                                                SizedBox(height: 8.h),
+                                                Text(
+                                                  '¡Lo quiero!',
+                                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 22.sp,
+                                                    letterSpacing: 0.5,
+                                                    height: 1.1,
                                                   ),
-                                                ],
-                                              ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -387,55 +442,58 @@ class _FeedItemCardState extends State<FeedItemCard>
                               builder: (context, child) {
                                 final screenWidth = MediaQuery.of(context).size.width;
                                 final progress = (_dragOffset.abs() / screenWidth).clamp(0.0, 1.0);
-                                // Opacity reaches 90% at 30% movement (0.3 progress)
-                                final opacity = progress < 0.3 ? (progress / 0.3) * 0.9 : 0.9;
-                                final scale = 0.7 + (0.3 * progress);
-                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0); // Text fades from 10% to 40%
+                                final scale = 0.8 + (0.2 * progress);
+                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0);
+                                final bgOpacity = (progress * 1.5).clamp(0.0, 0.95);
                                 
-                                return Opacity(
-                                  opacity: opacity,
-                                  child: Transform.scale(
-                                    scale: scale,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16.r),
-                                        color: Colors.red.withOpacity(0.15 * progress),
-                                        border: Border.all(
-                                          color: Colors.red.withOpacity(0.7 * progress),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: Center(
+                                return Align(
+                                  alignment: Alignment.topRight,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(top: 40.h, right: 30.w),
+                                    child: Transform.rotate(
+                                      angle: 0.2, // Tilted right
+                                      child: Transform.scale(
+                                        scale: scale,
                                         child: Opacity(
                                           opacity: textOpacity,
                                           child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                                             decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(0.95),
-                                              borderRadius: BorderRadius.circular(16.r),
+                                              color: Colors.red.withOpacity(bgOpacity),
+                                              borderRadius: BorderRadius.circular(20.r),
+                                              border: Border.all(
+                                                color: Colors.red.withOpacity((bgOpacity + 0.3).clamp(0.0, 1.0)),
+                                                width: 3,
+                                              ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.red.withOpacity(0.4 * progress),
-                                                  blurRadius: 12,
-                                                  offset: const Offset(0, 6),
+                                                  color: Colors.red.withOpacity(0.3 * progress),
+                                                  blurRadius: 16,
+                                                  offset: const Offset(0, 8),
                                                 ),
                                               ],
                                             ),
-                                            child: Text(
-                                              'No gracias',
-                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 22.sp,
-                                                letterSpacing: 0.8,
-                                                shadows: [
-                                                  Shadow(
-                                                    color: Colors.black.withOpacity(0.3),
-                                                    blurRadius: 4,
-                                                    offset: const Offset(0, 2),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  LucideIcons.xCircle,
+                                                  color: Colors.white,
+                                                  size: 36.sp,
+                                                ),
+                                                SizedBox(height: 8.h),
+                                                Text(
+                                                  'No gracias',
+                                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 22.sp,
+                                                    letterSpacing: 0.5,
+                                                    height: 1.1,
                                                   ),
-                                                ],
-                                              ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),

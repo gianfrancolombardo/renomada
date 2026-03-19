@@ -34,6 +34,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   int _currentIndex = 0;
   bool _isNavigatingToChat = false;
   bool _isInitializing = true; // Track initial loading phase
+  bool _hasShownHintAnimation = false;
+
+  bool _canUseLocationFeed(LocationState locationState) {
+    return locationState.hasLocation;
+  }
 
   @override
   void initState() {
@@ -57,8 +62,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final locationState = ref.read(locationProvider);
     
     // If we already have location, load feed immediately
-    if (locationState.isPermissionGranted && locationState.hasLocation) {
-      await ref.read(feedProvider.notifier).loadFeed(refresh: true);
+    if (_canUseLocationFeed(locationState)) {
+      await ref
+          .read(feedProvider.notifier)
+          .loadFeed(refresh: true);
       return;
     }
     
@@ -72,7 +79,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       // Load feed if we now have location
       final updatedLocationState = ref.read(locationProvider);
       if (updatedLocationState.hasLocation) {
-        await ref.read(feedProvider.notifier).loadFeed(refresh: true);
+        await ref
+            .read(feedProvider.notifier)
+            .loadFeed(refresh: true);
       }
     }
     
@@ -90,29 +99,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     super.dispose();
   }
 
-  Future<void> _loadFeedIfPossible() async {
-    final locationState = ref.read(locationProvider);
-    
-    if (locationState.isPermissionGranted && locationState.hasLocation) {
-      await ref.read(feedProvider.notifier).loadFeed(refresh: true);
-    } else if (locationState.isPermissionGranted && !locationState.hasLocation) {
-      // If permission is granted but no location, try to get it silently
-      await ref.read(locationProvider.notifier).getCurrentLocation();
-      final updatedLocationState = ref.read(locationProvider);
-      if (updatedLocationState.hasLocation) {
-        await ref.read(feedProvider.notifier).loadFeed(refresh: true);
-      }
-    } else {
-      // No permission, load recent items
-      // await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
-    }
-  }
-
   Future<void> _onRefresh() async {
     // Update location first, then load feed
     final locationState = ref.read(locationProvider);
     
-    if (locationState.isPermissionGranted && locationState.hasLocation) {
+    if (locationState.hasLocation && locationState.isManual) {
+      print('🔄 [FeedScreen] Refreshing nearby feed using manual location');
+      await ref.read(feedProvider.notifier).refresh();
+    } else if (locationState.isPermissionGranted && locationState.hasLocation) {
+      print('🔄 [FeedScreen] Refreshing nearby feed using GPS location');
       await ref.read(locationProvider.notifier).getCurrentLocation();
       await ref.read(feedProvider.notifier).refresh();
     } else if (locationState.isPermissionGranted && !locationState.hasLocation) {
@@ -121,10 +116,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       if (updatedLocationState.hasLocation) {
         await ref.read(feedProvider.notifier).refresh();
       } else {
+        print('🔄 [FeedScreen] Refresh fallback to recent feed (no location available)');
         await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
       }
     } else {
       // No permission, refresh recent items
+      print('🔄 [FeedScreen] Refresh fallback to recent feed (no permission, no location)');
       await ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
     }
   }
@@ -298,7 +295,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           next.hasLocation && 
           next.isPermissionGranted &&
           feedState.items.isEmpty) {
-        // Location just became available, wait a bit for it to be saved to profile
+        // Location just became available via GPS. Wait a bit for it to be saved to profile.
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             ref.read(feedProvider.notifier).loadFeed(refresh: true);
@@ -383,19 +380,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   }
 
   Widget _buildBody(feedState, locationState, profileState) {
-    // Don't show banner during initial loading (when skeleton is shown)
-    final shouldShowBanner = (!locationState.isPermissionGranted || !locationState.hasLocation) &&
-        !_isInitializing &&
-        !(feedState.isLoading && feedState.items.isEmpty);
-    
     return Column(
       children: [
-        // Banner informativo cuando no hay ubicación (oculto durante carga inicial)
-        if (shouldShowBanner)
-          _buildLocationInfoBanner(locationState),
-        
         // Radius selector - now toggleable
-        if (locationState.isPermissionGranted && locationState.hasLocation)
+        // Show if we have any location (GPS or manual)
+        if (locationState.hasLocation)
           RadiusSelector(
             selectedRadius: feedState.selectedRadiusKm.toInt(),
             onRadiusChanged: (radius) => _onRadiusChanged(radius.toDouble()),
@@ -407,8 +396,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           child: _buildContent(feedState, locationState),
         ),
         
-        // Action buttons below the content (show when there are items, regardless of location)
-        if (feedState.items.isNotEmpty)
+        // Action buttons below the content (show only when there are items and a location is set)
+        if (feedState.items.isNotEmpty && locationState.hasLocation)
           _buildActionButtons(feedState),
       ],
     );
@@ -420,37 +409,35 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       return const FeedLoadingState();
     }
 
-    // If permission is granted but no location, show loading while trying to get it
-    if (locationState.isPermissionGranted && !locationState.hasLocation) {
+    // If we have a manual location set or a real location, show the feed content
+    if (locationState.hasLocation) {
+      return _buildFeedContent(feedState, locationState);
+    }
+
+    // If permission is granted but no location yet, show loading while trying to get it
+    if (locationState.isPermissionGranted) {
       if (locationState.isLoading) {
         return const FeedLoadingState();
       }
-      // If not loading and no location, try to get it automatically
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Only try once to avoid loops
-        // The check is done in _initializeFeed
-      });
-      
       // If we are here, it means auto-location failed even with permission
       // Show manual selector
       return ManualLocationSelector(
         onLocationSelected: () {
-          ref.read(feedProvider.notifier).loadFeed(refresh: true);
+          ref.read(feedProvider.notifier).loadFeed(
+                refresh: true,
+              );
         },
       );
     }
 
-    // If no permission, show manual selector instead of recent items
-    if (!locationState.isPermissionGranted) {
-      return ManualLocationSelector(
-        onLocationSelected: () {
-          ref.read(feedProvider.notifier).loadFeed(refresh: true);
-        },
-      );
-    }
-
-    // Show feed content (with location)
-    return _buildFeedContent(feedState, locationState);
+    // If no permission and no manual location, show manual selector
+    return ManualLocationSelector(
+      onLocationSelected: () {
+        ref.read(feedProvider.notifier).loadFeed(
+              refresh: true,
+            );
+      },
+    );
   }
 
   Widget _buildFeedContent(FeedState feedState, LocationState locationState) {
@@ -463,8 +450,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
       return FeedErrorState(
         error: feedState.error!,
         onRetry: () {
-          if (locationState.isPermissionGranted && locationState.hasLocation) {
-            ref.read(feedProvider.notifier).loadFeed(refresh: true);
+          if (_canUseLocationFeed(locationState)) {
+            ref.read(feedProvider.notifier).loadFeed(
+                  refresh: true,
+                );
           } else {
             ref.read(feedProvider.notifier).loadFeedWithoutLocation(refresh: true);
           }
@@ -492,16 +481,16 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           
           // Load more items when approaching the end (only if has location)
           if (index >= feedState.items.length - 3) {
-            if (locationState.isPermissionGranted && locationState.hasLocation) {
+            if (_canUseLocationFeed(locationState)) {
               ref.read(feedProvider.notifier).loadMoreItems();
             }
             // No pagination for recent items (max 10)
           }
         },
-        itemCount: feedState.items.length + (feedState.items.length == 10 && !locationState.isPermissionGranted ? 1 : 0),
+        itemCount: feedState.items.length + (feedState.items.length == 10 && !_canUseLocationFeed(locationState) ? 1 : 0),
         itemBuilder: (context, index) {
           // Show limit message after 10 items if no location
-          if (!locationState.isPermissionGranted && 
+          if (!_canUseLocationFeed(locationState) && 
               feedState.items.length == 10 && 
               index == 10) {
             return _buildLimitReachedMessage(locationState);
@@ -513,8 +502,17 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
           final feedItem = feedState.items[index];
           
+          bool showHint = false;
+          if (index == 0 && !_hasShownHintAnimation) {
+            showHint = true;
+            // Schedule setting flag to true to avoid modifying state during build in a way that affects other widgets,
+            // though just setting it is usually fine.
+            _hasShownHintAnimation = true;
+          }
+          
           return FeedItemCard(
             item: feedItem,
+            showHintAnimation: showHint,
             onTap: () {
               // TODO: Navigate to item details
             },
@@ -631,85 +629,4 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 
-  Widget _buildLocationInfoBanner(LocationState locationState) {
-    final isPermanentlyDenied = locationState.permissionStatus == LocationPermissionStatus.permanentlyDenied;
-    
-    return Container(
-      margin: EdgeInsets.all(16.w),
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            child: Icon(
-              isPermanentlyDenied ? LucideIcons.mapPinOff : LucideIcons.mapPin,
-              size: 20.sp,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isPermanentlyDenied 
-                      ? 'Ubicación bloqueada'
-                      : 'Ubicación desactivada',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Mostrando últimos objetos, no los más cercanos',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          TextButton(
-            onPressed: () {
-              if (isPermanentlyDenied) {
-                context.push('/location-recovery');
-              } else {
-                context.push('/location-permission');
-              }
-            },
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              isPermanentlyDenied ? 'Abrir' : 'Activar',
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
