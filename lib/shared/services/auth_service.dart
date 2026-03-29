@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/config/supabase_config.dart';
+import 'push_notification_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -85,7 +86,9 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
+    await PushNotificationService.instance.unregisterCurrentDevice();
     await SupabaseConfig.client.auth.signOut();
+    PushNotificationService.instance.onLoggedOut();
   }
 
   // Reset password

@@ -58,7 +58,7 @@ class _FeedItemCardState extends State<FeedItemCard>
     ));
 
     _hintAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 6800),
       vsync: this,
     );
 
@@ -96,7 +96,7 @@ class _FeedItemCardState extends State<FeedItemCard>
 
     if (widget.showHintAnimation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 800), () {
+        Future.delayed(const Duration(milliseconds: 1400), () {
           if (mounted) {
             _hintAnimationController.forward();
           }
@@ -189,6 +189,70 @@ class _FeedItemCardState extends State<FeedItemCard>
         _dragOffset = 0;
       });
     });
+  }
+
+  /// Full-card tint + icon/label in a corner; aligns with card axes (no extra tilt).
+  Widget _buildSwipeTintOverlay(BuildContext context, {required bool forLike}) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final progress = (_dragOffset.abs() / screenWidth).clamp(0.0, 1.0);
+    final textOpacity = progress < 0.05
+        ? 0.0
+        : (progress < 0.35 ? (progress - 0.05) / 0.3 : 1.0);
+    final bgOpacity = (progress * 0.72).clamp(0.0, 0.52);
+
+    final baseColor =
+        forLike ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(
+              color: baseColor.withValues(alpha: bgOpacity),
+            ),
+            Positioned(
+              top: 28.h,
+              left: forLike ? 20.w : null,
+              right: forLike ? null : 20.w,
+              child: Opacity(
+                opacity: textOpacity,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: screenWidth * 0.48),
+                  child: Column(
+                    crossAxisAlignment: forLike
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        forLike
+                            ? LucideIcons.checkCircle2
+                            : LucideIcons.xCircle,
+                        color: Colors.white,
+                        size: 44.sp,
+                      ),
+                      SizedBox(height: 10.h),
+                      Text(
+                        forLike ? '¡Lo quiero!' : 'No gracias',
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
+                                ),
+                        textAlign:
+                            forLike ? TextAlign.left : TextAlign.right,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -365,145 +429,11 @@ class _FeedItemCardState extends State<FeedItemCard>
                           ),
                         ),
 
-                        // Progressive swipe indicators - appear immediately during swipe (MOVED TO END TO DRAW ON TOP)
-                        if (_dragOffset > 5) // Reduced threshold for immediate feedback
-                          Positioned.fill(
-                            child: AnimatedBuilder(
-                              animation: _animationController,
-                              builder: (context, child) {
-                                final screenWidth = MediaQuery.of(context).size.width;
-                                final progress = (_dragOffset / screenWidth).clamp(0.0, 1.0);
-                                final scale = 0.8 + (0.2 * progress);
-                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0);
-                                final bgOpacity = (progress * 1.5).clamp(0.0, 0.95);
-                                
-                                return Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(top: 40.h, left: 30.w),
-                                    child: Transform.rotate(
-                                      angle: -0.2, // Tilted left
-                                      child: Transform.scale(
-                                        scale: scale,
-                                        child: Opacity(
-                                          opacity: textOpacity,
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green.withOpacity(bgOpacity),
-                                              borderRadius: BorderRadius.circular(20.r),
-                                              border: Border.all(
-                                                color: Colors.green.withOpacity((bgOpacity + 0.3).clamp(0.0, 1.0)),
-                                                width: 3,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.green.withOpacity(0.3 * progress),
-                                                  blurRadius: 16,
-                                                  offset: const Offset(0, 8),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  LucideIcons.checkCircle,
-                                                  color: Colors.white,
-                                                  size: 36.sp,
-                                                ),
-                                                SizedBox(height: 8.h),
-                                                Text(
-                                                  '¡Lo quiero!',
-                                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 22.sp,
-                                                    letterSpacing: 0.5,
-                                                    height: 1.1,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        if (_dragOffset < -5) // Reduced threshold for immediate feedback
-                          Positioned.fill(
-                            child: AnimatedBuilder(
-                              animation: _animationController,
-                              builder: (context, child) {
-                                final screenWidth = MediaQuery.of(context).size.width;
-                                final progress = (_dragOffset.abs() / screenWidth).clamp(0.0, 1.0);
-                                final scale = 0.8 + (0.2 * progress);
-                                final textOpacity = progress < 0.1 ? 0.0 : (progress < 0.4 ? (progress - 0.1) / 0.3 : 1.0);
-                                final bgOpacity = (progress * 1.5).clamp(0.0, 0.95);
-                                
-                                return Align(
-                                  alignment: Alignment.topRight,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(top: 40.h, right: 30.w),
-                                    child: Transform.rotate(
-                                      angle: 0.2, // Tilted right
-                                      child: Transform.scale(
-                                        scale: scale,
-                                        child: Opacity(
-                                          opacity: textOpacity,
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(bgOpacity),
-                                              borderRadius: BorderRadius.circular(20.r),
-                                              border: Border.all(
-                                                color: Colors.red.withOpacity((bgOpacity + 0.3).clamp(0.0, 1.0)),
-                                                width: 3,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.red.withOpacity(0.3 * progress),
-                                                  blurRadius: 16,
-                                                  offset: const Offset(0, 8),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  LucideIcons.xCircle,
-                                                  color: Colors.white,
-                                                  size: 36.sp,
-                                                ),
-                                                SizedBox(height: 8.h),
-                                                Text(
-                                                  'No gracias',
-                                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 22.sp,
-                                                    letterSpacing: 0.5,
-                                                    height: 1.1,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                        // Full-card swipe tint + corner label (drawn on top)
+                        if (_dragOffset > 5)
+                          _buildSwipeTintOverlay(context, forLike: true),
+                        if (_dragOffset < -5)
+                          _buildSwipeTintOverlay(context, forLike: false),
 
                       ],
                     ),

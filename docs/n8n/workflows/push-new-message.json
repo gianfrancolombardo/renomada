@@ -1,0 +1,190 @@
+{
+  "name": "ReNomada — Push new chat message (Supabase → FCM)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "renomada-messages-insert",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "b2f0c8e0-1111-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Messages INSERT webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "b2f0c8e0-2222-4b0e-8f16-1a2b3c4d5e01"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2a00001-0001-4000-8000-000000000001",
+              "name": "supabase_url",
+              "value": "https://YOUR_PROJECT_REF.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "c2a00001-0001-4000-8000-000000000002",
+              "name": "supabase_service_role_key",
+              "value": "PASTE_SUPABASE_SERVICE_ROLE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "c2a00001-0001-4000-8000-000000000003",
+              "name": "firebase_project_id",
+              "value": "YOUR_FIREBASE_GCP_PROJECT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b2f0c8e0-2222-4b0e-8f16-1a2b3c4d5e02",
+      "name": "Workflow config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.supabase_url.replace(/\\/$/, '') + '/rest/v1/rpc/get_push_recipients_for_chat_message' }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.supabase_service_role_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.supabase_service_role_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_chat_id: $json.record.chat_id, p_sender_id: $json.record.sender_id }) }}",
+        "options": {}
+      },
+      "id": "b2f0c8e0-3333-4b0e-8f16-1a2b3c4d5e01",
+      "name": "RPC get_push_recipients_for_chat_message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cfg = $('Workflow config').first().json;\nconst root = $input.first().json;\nconst rows = Array.isArray(root) ? root : [];\nif (rows.length === 0) return [];\nconst chatId = cfg.record?.chat_id ?? cfg.body?.record?.chat_id;\nif (!chatId) throw new Error('Could not read chat_id from webhook payload');\nreturn rows.map((r) => ({\n  json: {\n    user_id: r.user_id,\n    device_token: r.token,\n    platform: r.platform,\n    firebase_project_id: cfg.firebase_project_id,\n    chat_id: chatId,\n  },\n}));"
+      },
+      "id": "b2f0c8e0-4444-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Expand recipients for FCM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fcm.googleapis.com/v1/projects/' + $json.firebase_project_id + '/messages:send' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: { token: $json.device_token, notification: { title: 'ReNomada', body: 'New message' }, data: { chatId: String($json.chat_id) } } }) }}",
+        "options": {}
+      },
+      "id": "b2f0c8e0-5555-4b0e-8f16-1a2b3c4d5e01",
+      "name": "FCM HTTP v1 send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "content": "## ReNomada — new message\n\nIgual que ítems: **Workflow config** + credencial **Google Service Account API** en FCM (HTTP Request + scope FCM).\n\n**Webhook:** tabla `messages`, `INSERT`.",
+        "height": 220,
+        "width": 400
+      },
+      "id": "b2f0c8e0-6666-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-40, 120]
+    }
+  ],
+  "connections": {
+    "Messages INSERT webhook": {
+      "main": [
+        [
+          {
+            "node": "Workflow config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow config": {
+      "main": [
+        [
+          {
+            "node": "RPC get_push_recipients_for_chat_message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC get_push_recipients_for_chat_message": {
+      "main": [
+        [
+          {
+            "node": "Expand recipients for FCM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand recipients for FCM": {
+      "main": [
+        [
+          {
+            "node": "FCM HTTP v1 send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -12,8 +12,25 @@ import '../../features/chat/screens/chat_screen.dart';
 import '../../shared/screens/main_screens.dart';
 import '../../core/config/supabase_config.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/profile/screens/notification_permission_screen.dart';
 
 class AppRouter {
+  static GoRouter? router;
+  static String? _pendingDeepLink;
+
+  static void registerRouter(GoRouter goRouter) {
+    router = goRouter;
+    final pending = _pendingDeepLink;
+    if (pending != null && pending.isNotEmpty) {
+      _pendingDeepLink = null;
+      goRouter.go(pending);
+    }
+  }
+
+  static void setPendingDeepLink(String location) {
+    _pendingDeepLink = location;
+  }
+
   static GoRouter createRouter(String initialLocation, ProviderContainer container) {
     // Create a notifier that will trigger router refresh when auth state changes
     final authListenable = _AuthListenable(container);
@@ -41,7 +58,7 @@ class AppRouter {
             final authState = container.read(authProvider);
             final profile = authState.profile;
             if (profile != null && !profile.hasSeenOnboarding) {
-              return '/onboarding';
+              return '/location-permission';
             }
             return '/feed';
           }
@@ -61,24 +78,45 @@ class AppRouter {
                               currentPath == '/signup' ||
                               currentPath == '/register';
         
-        // If user is authenticated and trying to access public routes, check onboarding status
+        // Authenticated user on welcome/login/signup: send to feed or start permission funnel
         if (isAuthenticated && isPublicRoute) {
           final authState = container.read(authProvider);
           final profile = authState.profile;
-          
-          // If trying to access onboarding but already seen it, redirect to feed
-          if (currentPath == '/onboarding' && profile != null && profile.hasSeenOnboarding) {
+          if (profile == null) {
+            return null;
+          }
+          if (profile.hasSeenOnboarding) {
+            if (currentPath == '/onboarding') {
+              return '/feed';
+            }
             return '/feed';
           }
-          
-          // If accessing other public routes and hasn't seen onboarding, redirect to onboarding
-          if (currentPath != '/onboarding' && profile != null && !profile.hasSeenOnboarding) {
-            return '/onboarding';
+          // First-time funnel: location → notifications → onboarding
+          const setupFunnel = <String>{
+            '/location-permission',
+            '/notification-permission',
+            '/location-recovery',
+            '/onboarding',
+          };
+          if (setupFunnel.contains(currentPath)) {
+            return null;
           }
-          
-          // Otherwise redirect to feed
-          if (currentPath != '/onboarding') {
-            return '/feed';
+          return '/location-permission';
+        }
+
+        // Block deep links to feed/profile/etc. until first-time funnel completes
+        if (isAuthenticated) {
+          final profile = container.read(authProvider).profile;
+          if (profile != null && !profile.hasSeenOnboarding) {
+            const setupFunnel = <String>{
+              '/location-permission',
+              '/notification-permission',
+              '/location-recovery',
+              '/onboarding',
+            };
+            if (!setupFunnel.contains(currentPath)) {
+              return '/location-permission';
+            }
           }
         }
         
@@ -177,6 +215,15 @@ class AppRouter {
           path: '/onboarding',
           name: 'onboarding',
           builder: (context, state) => const OnboardingScreen(),
+        ),
+
+        GoRoute(
+          path: '/notification-permission',
+          name: 'notification-permission',
+          builder: (context, state) {
+            final next = state.uri.queryParameters['next'] ?? '/feed';
+            return NotificationPermissionScreen(nextRoute: next);
+          },
         ),
       ],
     );

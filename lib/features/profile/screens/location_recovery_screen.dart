@@ -633,15 +633,15 @@ class _LocationRecoveryScreenState extends ConsumerState<LocationRecoveryScreen>
 
   void _navigateAfterLocationObtained() {
     final profileState = ref.read(profileProvider);
-    
-    // Check if user has seen onboarding
+    final String next;
     if (profileState.profile != null && profileState.profile!.hasSeenOnboarding) {
-      // User has seen onboarding, go directly to feed
-      context.pushReplacement('/feed');
+      next = '/feed';
     } else {
-      // User hasn't seen onboarding, go to onboarding screen
-      context.pushReplacement('/onboarding');
+      next = '/onboarding';
     }
+    context.pushReplacement(
+      '/notification-permission?next=${Uri.encodeComponent(next)}',
+    );
   }
 }
 

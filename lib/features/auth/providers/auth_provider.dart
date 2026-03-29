@@ -4,6 +4,7 @@ import '../../../shared/services/auth_service.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../../shared/services/profile_service.dart';
 import '../../../shared/services/realtime_manager.dart';
+import '../../../shared/services/push_notification_service.dart';
 
 // Auth state model
 class AuthState {
@@ -59,12 +60,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         state = state.copyWith(user: user, error: null);
         _loadProfile();
-        // Initialize realtime after successful auth
         _realtimeManager.initialize();
+        PushNotificationService.instance.syncSubscriptionForCurrentUser();
       } else {
         state = const AuthState();
-        // Disconnect realtime when user logs out
         _realtimeManager.disconnect();
+        PushNotificationService.instance.onLoggedOut();
       }
     });
   }
@@ -179,7 +180,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> signOut() async {
     try {
       state = state.copyWith(isLoading: true);
-      // Disconnect realtime before signing out
       await _realtimeManager.disconnect();
       await _authService.signOut();
       state = const AuthState();

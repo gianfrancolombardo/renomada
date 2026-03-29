@@ -3,68 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../shared/widgets/loading_widget.dart';
-import '../../../shared/services/location_service.dart';
-import '../../../shared/services/location_log_service.dart';
-import '../../../shared/utils/snackbar_utils.dart';
-import '../providers/location_provider.dart';
-import '../providers/profile_provider.dart';
 
-class LocationPermissionScreen extends ConsumerStatefulWidget {
-  const LocationPermissionScreen({super.key});
+import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/services/push_notification_service.dart';
+
+/// Same layout and interaction pattern as [LocationPermissionScreen].
+/// [nextRoute] is where we go after allow or skip (e.g. `/onboarding` or `/feed`).
+class NotificationPermissionScreen extends ConsumerStatefulWidget {
+  const NotificationPermissionScreen({super.key, required this.nextRoute});
+
+  final String nextRoute;
 
   @override
-  ConsumerState<LocationPermissionScreen> createState() => _LocationPermissionScreenState();
+  ConsumerState<NotificationPermissionScreen> createState() =>
+      _NotificationPermissionScreenState();
 }
 
-class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScreen> {
+class _NotificationPermissionScreenState
+    extends ConsumerState<NotificationPermissionScreen> {
   bool _hasSeenExplanation = false;
-  bool _hasCheckedPermission = false;
+  bool _busy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Check permission status when screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkPermissionStatus();
-    });
+  Future<void> _handleAllowNotifications() async {
+    setState(() => _busy = true);
+    try {
+      await PushNotificationService.instance.syncSubscriptionForCurrentUser();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (mounted) context.go(widget.nextRoute);
   }
 
-  Future<void> _checkPermissionStatus() async {
-    if (_hasCheckedPermission) return;
-    _hasCheckedPermission = true;
-
-    final locationService = LocationService();
-    final permission = await locationService.checkLocationPermission();
-    
-    // If permanently denied, redirect to recovery screen
-    if (permission == LocationPermissionStatus.permanentlyDenied && mounted) {
-      final logService = LocationLogService();
-      await logService.logEvent(
-        eventType: LocationEventType.permissionPermanentlyDenied,
-        action: LocationAction.checkPermission,
-        permissionStatus: permission,
-        metadata: {'source': 'location_permission_screen_init'},
-      );
-      
-      context.pushReplacement('/location-recovery');
-    }
+  void _handleSkip() {
+    context.go(widget.nextRoute);
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationState = ref.watch(locationProvider);
-
-    // Listen to location changes
-    ref.listen<LocationState>(locationProvider, (previous, next) {
-      if (next.hasLocation && mounted) {
-        // Location obtained, check onboarding status and navigate accordingly
-        _navigateAfterLocationObtained();
-      } else if (next.error != null && mounted) {
-        SnackbarUtils.showError(context, next.error!);
-      }
-    });
-
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
@@ -73,8 +48,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
           child: Column(
             children: [
               SizedBox(height: 40.h),
-              
-              // Location icon
+
               Container(
                 width: 120.w,
                 height: 120.w,
@@ -90,28 +64,26 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                   ],
                 ),
                 child: Icon(
-                  LucideIcons.mapPin,
+                  LucideIcons.bell,
                   size: 60.sp,
                   color: Theme.of(context).colorScheme.onPrimary,
                 ),
               ),
-              
+
               SizedBox(height: 32.h),
-              
-              // Title
+
               Text(
-                'Para mostrarte objetos cerca',
+                'Para avisarte de lo importante',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onBackground,
-                  letterSpacing: -0.5,
-                ),
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onBackground,
+                      letterSpacing: -0.5,
+                    ),
                 textAlign: TextAlign.center,
               ),
-              
+
               SizedBox(height: 16.h),
-              
-              // Description
+
               Container(
                 padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
@@ -123,25 +95,24 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                   ),
                 ),
                 child: Text(
-                  'Mostramos objetos cerca de ti, nunca tu ruta. Puedes cambiarlo cuando quieras.',
+                  'Te avisamos de chats y de cosas nuevas cerca de ti. '
+                  'Puedes cambiarlo cuando quieras.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              
+
               SizedBox(height: 24.h),
-              
-              // Privacy explanation
-              if (_hasSeenExplanation) _buildPrivacyExplanation(),
-              
+
+              if (_hasSeenExplanation) _buildExplanationPanel(),
+
               SizedBox(height: 32.h),
-              
-              // Action buttons
-              _buildActionButtons(locationState),
-              
+
+              _buildActionButtons(),
+
               SizedBox(height: 24.h),
             ],
           ),
@@ -150,7 +121,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
     );
   }
 
-  Widget _buildPrivacyExplanation() {
+  Widget _buildExplanationPanel() {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
@@ -180,35 +151,33 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                 ),
               ),
               SizedBox(width: 10.w),
-              Text(
-                'Control total sobre tu ubicación',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
+              Expanded(
+                child: Text(
+                  'Qué avisos enviamos',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                 ),
               ),
             ],
           ),
-          
           SizedBox(height: 16.h),
-          
-          _buildPrivacyPoint(
-            '📍 Ubicación aproximada',
-            'Solo guardamos ubicación redondeada (~50m de precisión)',
+          _buildBulletPoint(
+            'Mensajes en el chat',
+            'Cuando alguien te escribe en una conversación.',
           ),
-          
           SizedBox(height: 12.h),
-          
-          _buildPrivacyPoint(
-            '🔒 Sin historial',
-            'No guardamos historial de ubicaciones, solo la última posición',
+          _buildBulletPoint(
+            'Nuevos objetos cerca',
+            'Cuando se publica algo cerca de tu zona.',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPrivacyPoint(String title, String description) {
+  Widget _buildBulletPoint(String title, String description) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -228,17 +197,17 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
               Text(
                 title,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
               ),
               SizedBox(height: 2.h),
               Text(
                 description,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.2,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.2,
+                    ),
               ),
             ],
           ),
@@ -247,15 +216,14 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
     );
   }
 
-  Widget _buildActionButtons(LocationState locationState) {
+  Widget _buildActionButtons() {
     return Column(
       children: [
-        // Allow location button
         SizedBox(
           width: double.infinity,
           height: 50.h,
           child: ElevatedButton(
-            onPressed: locationState.isLoading ? null : _handleAllowLocation,
+            onPressed: _busy ? null : _handleAllowNotifications,
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -264,13 +232,13 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                 borderRadius: BorderRadius.circular(12.r),
               ),
             ),
-            child: locationState.isLoading
+            child: _busy
                 ? LoadingWidget(
                     size: 20,
                     color: Theme.of(context).colorScheme.onPrimary,
                   )
                 : Text(
-                    'Activar ubicación',
+                    'Activar notificaciones',
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
@@ -278,15 +246,12 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
                   ),
           ),
         ),
-        
         SizedBox(height: 12.h),
-        
-        // Skip button
         SizedBox(
           width: double.infinity,
           height: 44.h,
           child: TextButton(
-            onPressed: _handleSkip,
+            onPressed: _busy ? null : _handleSkip,
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
               shape: RoundedRectangleBorder(
@@ -294,7 +259,7 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
               ),
             ),
             child: Text(
-              'Continuar sin ubicación',
+              'Continuar sin avisos',
               style: TextStyle(
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w500,
@@ -302,18 +267,17 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
             ),
           ),
         ),
-        
         SizedBox(height: 8.h),
-        
-        // Privacy info button
         TextButton(
-          onPressed: () {
-            setState(() {
-              _hasSeenExplanation = !_hasSeenExplanation;
-            });
-          },
+          onPressed: _busy
+              ? null
+              : () {
+                  setState(() {
+                    _hasSeenExplanation = !_hasSeenExplanation;
+                  });
+                },
           child: Text(
-            _hasSeenExplanation ? 'Ocultar detalles' : 'Más sobre privacidad',
+            _hasSeenExplanation ? 'Ocultar detalles' : 'Más sobre los avisos',
             style: TextStyle(
               fontSize: 14.sp,
               color: Theme.of(context).colorScheme.primary,
@@ -324,41 +288,4 @@ class _LocationPermissionScreenState extends ConsumerState<LocationPermissionScr
       ],
     );
   }
-
-  Future<void> _handleAllowLocation() async {
-    final success = await ref.read(locationProvider.notifier).requestLocationPermission();
-    
-    if (!success && mounted) {
-      // Handle different permission states
-      final permissionStatus = ref.read(locationProvider).permissionStatus;
-      
-      if (permissionStatus == LocationPermissionStatus.permanentlyDenied) {
-        // Redirect to recovery screen instead of showing dialog
-        context.pushReplacement('/location-recovery');
-      }
-    }
-  }
-
-  void _handleSkip() {
-    // Log skip action
-    final logService = LocationLogService();
-    logService.logSkipLocation();
-    
-    // Navigate to home without location
-    _navigateAfterLocationObtained();
-  }
-
-  void _navigateAfterLocationObtained() {
-    final profileState = ref.read(profileProvider);
-    final String next;
-    if (profileState.profile != null && profileState.profile!.hasSeenOnboarding) {
-      next = '/feed';
-    } else {
-      next = '/onboarding';
-    }
-    context.pushReplacement(
-      '/notification-permission?next=${Uri.encodeComponent(next)}',
-    );
-  }
-
 }

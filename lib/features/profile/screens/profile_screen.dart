@@ -86,9 +86,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             // Save button
             _buildSaveButton(isLoading),
-            
+
+            SizedBox(height: 24.h),
+            OutlinedButton.icon(
+              onPressed: () => context.push(
+                '/notification-permission?next=${Uri.encodeComponent('/profile')}',
+              ),
+              icon: Icon(LucideIcons.bell, size: 20.sp),
+              label: const Text('Notificaciones'),
+            ),
+
             SizedBox(height: 32.h),
-            
+
             // Divider before logout section
             Divider(
               color: Theme.of(context).colorScheme.outline.withOpacity(0.2),

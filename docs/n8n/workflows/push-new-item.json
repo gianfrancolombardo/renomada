@@ -1,0 +1,196 @@
+{
+  "name": "ReNomada — Push new item (Supabase → FCM)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "renomada-items-insert",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1f0c8e0-1111-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Items INSERT webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "a1f0c8e0-2222-4b0e-8f16-1a2b3c4d5e01"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1a00001-0001-4000-8000-000000000001",
+              "name": "supabase_url",
+              "value": "https://YOUR_PROJECT_REF.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "c1a00001-0001-4000-8000-000000000002",
+              "name": "supabase_service_role_key",
+              "value": "PASTE_SUPABASE_SERVICE_ROLE_KEY",
+              "type": "string"
+            },
+            {
+              "id": "c1a00001-0001-4000-8000-000000000003",
+              "name": "firebase_project_id",
+              "value": "YOUR_FIREBASE_GCP_PROJECT_ID",
+              "type": "string"
+            },
+            {
+              "id": "c1a00001-0001-4000-8000-000000000004",
+              "name": "new_item_radius_km",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a1f0c8e0-2222-4b0e-8f16-1a2b3c4d5e02",
+      "name": "Workflow config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.supabase_url.replace(/\\/$/, '') + '/rest/v1/rpc/get_push_recipients_for_new_item' }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.supabase_service_role_key }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.supabase_service_role_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_item_id: $json.record.id, p_radius_km: Number($json.new_item_radius_km ?? 0) }) }}",
+        "options": {}
+      },
+      "id": "a1f0c8e0-3333-4b0e-8f16-1a2b3c4d5e01",
+      "name": "RPC get_push_recipients_for_new_item",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cfg = $('Workflow config').first().json;\nconst root = $input.first().json;\nconst rows = Array.isArray(root) ? root : [];\nif (rows.length === 0) return [];\nreturn rows.map((r) => ({\n  json: {\n    user_id: r.user_id,\n    device_token: r.token,\n    platform: r.platform,\n    firebase_project_id: cfg.firebase_project_id,\n  },\n}));"
+      },
+      "id": "a1f0c8e0-4444-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Expand recipients for FCM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fcm.googleapis.com/v1/projects/' + $json.firebase_project_id + '/messages:send' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: { token: $json.device_token, notification: { title: 'ReNomada', body: 'New item in the feed' }, data: { route: '/feed' } } }) }}",
+        "options": {}
+      },
+      "id": "a1f0c8e0-5555-4b0e-8f16-1a2b3c4d5e01",
+      "name": "FCM HTTP v1 send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "content": "## ReNomada — new item\n\n**Workflow config:** `supabase_url`, `supabase_service_role_key`, `firebase_project_id` (mismo que en Firebase / `firebase_options`), `new_item_radius_km`.\n\n**FCM — credencial n8n (recomendado):** en este nodo, **Credential → Google Service Account API**. En la credencial:\n- Email + private key de la cuenta de servicio FCM\n- Activa **Set up for use in HTTP Request node**\n- **Scope(s):** `https://www.googleapis.com/auth/firebase.messaging`\n\nAsí no guardas el JSON completo en el Set. La clave **service_role** de Supabase sigue siendo distinta (sigue en el Set o muévela a otra credencial si prefieres).\n\n**Webhook Supabase:** tabla `items`, `INSERT`.",
+        "height": 520,
+        "width": 420
+      },
+      "id": "a1f0c8e0-6666-4b0e-8f16-1a2b3c4d5e01",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-60, 40]
+    }
+  ],
+  "connections": {
+    "Items INSERT webhook": {
+      "main": [
+        [
+          {
+            "node": "Workflow config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow config": {
+      "main": [
+        [
+          {
+            "node": "RPC get_push_recipients_for_new_item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC get_push_recipients_for_new_item": {
+      "main": [
+        [
+          {
+            "node": "Expand recipients for FCM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand recipients for FCM": {
+      "main": [
+        [
+          {
+            "node": "FCM HTTP v1 send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

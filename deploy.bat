@@ -1,16 +1,18 @@
 @echo off
+setlocal
+
 echo Building Flutter web release...
 flutter build web --release
-if %errorlevel% neq 0 (
+if errorlevel 1 (
     echo Build failed!
-    exit /b %errorlevel%
+    exit /b 1
 )
 
 echo Deploying to Firebase Hosting...
 firebase deploy --only hosting
-if %errorlevel% neq 0 (
+if errorlevel 1 (
     echo Deploy failed!
-    exit /b %errorlevel%
+    exit /b 1
 )
 
 echo Deploy completed successfully!

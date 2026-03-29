@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,23 +8,28 @@ import 'core/config/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'shared/services/chat_realtime_service.dart';
+import 'shared/services/push_notification_service.dart';
 import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Force portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-  
+
+  await PushNotificationService.instance.initialize();
+
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
   // Initialize Supabase
   await SupabaseConfig.initialize();
   
   // Initialize chat realtime if user is authenticated
   if (SupabaseConfig.isAuthenticated) {
     await ChatRealtimeService().initialize();
+    await PushNotificationService.instance.syncSubscriptionForCurrentUser();
   }
   
   // Check if user is already authenticated and set initial route
@@ -56,6 +62,7 @@ class _RenomadaAppState extends ConsumerState<RenomadaApp> {
       widget.initialLocation,
       ProviderScope.containerOf(context),
     );
+    AppRouter.registerRouter(_router!);
     // Listen to auth changes globally to handle OAuth callbacks
     // This is especially important for Android where the callback may arrive
     // when the app is in any screen (not just LoginScreen)
@@ -86,7 +93,7 @@ class _RenomadaAppState extends ConsumerState<RenomadaApp> {
               final profile = authState.profile;
               
               if (profile != null && !profile.hasSeenOnboarding) {
-                router.go('/onboarding');
+                router.go('/location-permission');
               } else {
                 router.go('/feed');
               }
