@@ -1,3 +1,6 @@
+import 'dart:async' show unawaited;
+
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../shared/services/auth_service.dart';
@@ -47,27 +50,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final ProfileService _profileService = ProfileService();
   final RealtimeManager _realtimeManager = RealtimeManager();
 
+  void _safeUnawaited(String label, Future<void> future) {
+    unawaited(
+      future.catchError((Object e, StackTrace st) {
+        debugPrint('AuthNotifier [$label]: $e');
+        if (kDebugMode) {
+          debugPrint('$st');
+        }
+      }),
+    );
+  }
+
   // Initialize auth state
   void _initializeAuth() {
     final currentUser = _authService.currentUser;
     if (currentUser != null) {
       state = state.copyWith(user: currentUser);
-      _loadProfile();
+      _safeUnawaited('loadProfile', _loadProfile());
     }
 
     // Listen to auth state changes
-    _authService.authStateChanges.listen((user) {
-      if (user != null) {
-        state = state.copyWith(user: user, error: null);
-        _loadProfile();
-        _realtimeManager.initialize();
-        PushNotificationService.instance.syncSubscriptionForCurrentUser();
-      } else {
-        state = const AuthState();
-        _realtimeManager.disconnect();
-        PushNotificationService.instance.onLoggedOut();
-      }
-    });
+    _authService.authStateChanges.listen(
+      (user) {
+        if (user != null) {
+          state = state.copyWith(user: user, error: null);
+          _safeUnawaited('loadProfile', _loadProfile());
+          _safeUnawaited('realtime', _realtimeManager.initialize());
+          _safeUnawaited(
+            'pushSync',
+            PushNotificationService.instance.syncSubscriptionForCurrentUser(),
+          );
+        } else {
+          state = const AuthState();
+          _safeUnawaited('disconnect', _realtimeManager.disconnect());
+          PushNotificationService.instance.onLoggedOut();
+        }
+      },
+      onError: (Object e, StackTrace st) {
+        debugPrint('authStateChanges stream error: $e');
+        if (kDebugMode) {
+          debugPrint('$st');
+        }
+      },
+    );
   }
 
   // Load user profile

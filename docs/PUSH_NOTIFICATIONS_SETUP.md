@@ -22,9 +22,8 @@ Funciones SQL (ejecutar en Supabase): [docs/migrations/add_push_notification_rpc
    Esto debe **sustituir** [lib/firebase_options.dart](../lib/firebase_options.dart) con valores reales (no dejes `REPLACE_ME`).
 4. **Cloud Messaging**
   - En *Project settings → Cloud Messaging*, para **Web Push**, genera el par de claves **VAPID** y copia la clave pública en [lib/core/constants/firebase_web_constants.dart](../lib/core/constants/firebase_web_constants.dart) (`webVapidKey`).
-5. **Web: service worker**
-  - Edita [web/firebase-messaging-sw.js](../web/firebase-messaging-sw.js) y pon el mismo `firebaseConfig` que en la consola (apiKey, authDomain, projectId, etc.).
-  - Alinea la versión de los `importScripts` (`firebasejs/10.x.x`) con la que recomiende tu versión de `firebase_core` / documentación FlutterFire si hace falta.
+5. **Web (este repo): OneSignal, no FCM**
+  - La app web usa `onesignal_flutter` + [web/onesignal_bridge.js](../web/onesignal_bridge.js) y el worker de OneSignal ([web/OneSignalSDKWorker.js](../web/OneSignalSDKWorker.js)). No hace falta `firebase-messaging-sw.js` ni `firebase_core` en Dart para push en web.
 6. **Android**
   - Descarga `google-services.json` y colócalo en `android/app/`.
   - En `android/settings.gradle.kts` y `android/app/build.gradle.kts`, aplica el plugin `google-services` según la documentación oficial de FlutterFire.
@@ -120,7 +119,7 @@ Leyenda: **[hecho]** = ya está en el repo o lo dimos por hecho en tu entorno lo
 | **[hecho]** | Proyecto Firebase y apps Web/Android registradas. |
 | **[hecho]** | `lib/firebase_options.dart` con valores reales (FlutterFire). |
 | **[hecho]** | Clave pública VAPID en `lib/core/constants/firebase_web_constants.dart` (`webVapidKey`). |
-| **[hecho]** | `web/firebase-messaging-sw.js` con el mismo `firebaseConfig` que la app web (alineado con `firebase_options` web). |
+| **[hecho]** | Web push vía OneSignal (`index.html`, `onesignal_bridge.js`, `OneSignalSDKWorker.js`); sin FCM service worker en web. |
 | **[tú]** | En Google Cloud del proyecto: API **Firebase Cloud Messaging** usable por la cuenta de servicio que use n8n (FCM HTTP v1). |
 | **[tú]** | iOS / App Store: `GoogleService-Info.plist`, APNs, etc. (solo cuando toque). |
 

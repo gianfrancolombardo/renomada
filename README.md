@@ -25,7 +25,8 @@ Una aplicación móvil Flutter para intercambio de artículos basada en proximid
 2. **Configura Supabase** (ver `PROJECT_DOCUMENTATION.md`)
 3. **Ejecuta `database_setup.sql`** en tu proyecto Supabase
 4. **Actualiza las constantes** en `lib/core/constants/supabase_constants.dart`
-5. **Ejecuta** `flutter pub get && flutter run`
+5. **Android:** copia `android/app/google-services.json.example` a `android/app/google-services.json` y sustituye `PASTE_ANDROID_API_KEY_FROM_FIREBASE_CONSOLE` por la clave del archivo que descargas en Firebase Console → Project settings → Your apps (o pega el JSON completo descargado).
+6. **Ejecuta** `flutter pub get && flutter run`
 
 ## 📚 **Documentación Completa**
 

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,8 +28,14 @@ void main() async {
   
   // Initialize chat realtime if user is authenticated
   if (SupabaseConfig.isAuthenticated) {
-    await ChatRealtimeService().initialize();
-    await PushNotificationService.instance.syncSubscriptionForCurrentUser();
+    try {
+      await ChatRealtimeService().initialize();
+      await PushNotificationService.instance.syncSubscriptionForCurrentUser();
+    } catch (e, st) {
+      // Avoid uncaught async errors on web before runApp (minified stacks are opaque).
+      debugPrint('Startup (realtime / push sync): $e');
+      debugPrint('$st');
+    }
   }
   
   // Check if user is already authenticated and set initial route

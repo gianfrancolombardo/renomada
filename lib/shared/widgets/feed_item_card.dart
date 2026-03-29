@@ -236,7 +236,7 @@ class _FeedItemCardState extends State<FeedItemCard>
                       Text(
                         forLike ? '¡Lo quiero!' : 'No gracias',
                         style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            Theme.of(context).textTheme.headlineLarge?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                   height: 1.15,

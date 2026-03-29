@@ -19,8 +19,46 @@
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-  /** Resolves when renomadaOneSignalInit's deferred callback has finished (on failure, cleared so init can retry). */
+  /** Resolves when renomadaOneSignalInit's deferred callback has finished (cleared only on hard init failure). */
   var _initPromise = null;
+  /** Avoid duplicate click/subscription handlers if init runs more than once (e.g. Flutter retry + SDK already up). */
+  var _listenersAttached = false;
+
+  function isSdkAlreadyInitializedError(e) {
+    var msg = e && e.message != null ? String(e.message) : String(e);
+    return /already initialized/i.test(msg);
+  }
+
+  function attachOneSignalListeners(OneSignal) {
+    if (_listenersAttached) return;
+    _listenersAttached = true;
+
+    OneSignal.Notifications.addEventListener('click', function (event) {
+      try {
+        var n = event.notification;
+        var data = (n && n.additionalData) ? n.additionalData : {};
+        if (window.renomadaOnOneSignalNotificationClick) {
+          window.renomadaOnOneSignalNotificationClick(JSON.stringify(data));
+        }
+      } catch (err) {
+        console.warn('OneSignal click handler', err);
+      }
+    });
+
+    OneSignal.User.PushSubscription.addEventListener('change', function (ev) {
+      try {
+        var cur = ev && ev.current;
+        var id = cur && cur.id;
+        var optedIn = cur && cur.optedIn;
+        log('PushSubscription change: id=', id, 'optedIn=', optedIn);
+        if (id && window.renomadaOnOneSignalSubscriptionChange) {
+          window.renomadaOnOneSignalSubscriptionChange(id);
+        }
+      } catch (err) {
+        warn('subscription change handler', err);
+      }
+    });
+  }
 
   /**
    * @param {string} appId
@@ -36,12 +74,20 @@
       log('browser origin (OneSignal Site URL must match this exactly):', window.location.origin);
       OneSignalDeferred.push(async function (OneSignal) {
         try {
-          await OneSignal.init({
-            appId: appId,
-            allowLocalhostAsSecureOrigin: true,
-            welcomeNotification: { disable: true },
-          });
-          log('init OK');
+          try {
+            await OneSignal.init({
+              appId: appId,
+              allowLocalhostAsSecureOrigin: true,
+              welcomeNotification: { disable: true },
+            });
+            log('init OK');
+          } catch (e) {
+            if (isSdkAlreadyInitializedError(e)) {
+              log('init: SDK already initialized — continuing (idempotent)');
+            } else {
+              throw e;
+            }
+          }
 
           try {
             if (typeof OneSignal.Notifications.isPushSupported === 'function') {
@@ -51,32 +97,7 @@
             warn('isPushSupported check failed', e);
           }
 
-          OneSignal.Notifications.addEventListener('click', function (event) {
-            try {
-              var n = event.notification;
-              var data = (n && n.additionalData) ? n.additionalData : {};
-              if (window.renomadaOnOneSignalNotificationClick) {
-                window.renomadaOnOneSignalNotificationClick(JSON.stringify(data));
-              }
-            } catch (e) {
-              console.warn('OneSignal click handler', e);
-            }
-          });
-
-          OneSignal.User.PushSubscription.addEventListener('change', function (ev) {
-            try {
-              var cur = ev && ev.current;
-              var id = cur && cur.id;
-              var optedIn = cur && cur.optedIn;
-              log('PushSubscription change: id=', id, 'optedIn=', optedIn);
-              if (id && window.renomadaOnOneSignalSubscriptionChange) {
-                window.renomadaOnOneSignalSubscriptionChange(id);
-              }
-            } catch (e) {
-              warn('subscription change handler', e);
-            }
-          });
-
+          attachOneSignalListeners(OneSignal);
           resolve();
         } catch (e) {
           warn('init FAILED', e);
